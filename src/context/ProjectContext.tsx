@@ -79,6 +79,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const signup = async (email: string, password: string, name: string) => {
     try {
       const { error } = await supabase.auth.signUp({
+        name,
         email,
         password,
       });
