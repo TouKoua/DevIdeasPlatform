@@ -81,11 +81,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const { error } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          data: {
-            name: name,
-          },
-        },
       });
       
       if (error) throw error;
