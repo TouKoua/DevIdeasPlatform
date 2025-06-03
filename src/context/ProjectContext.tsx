@@ -78,19 +78,38 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const signup = async (email: string, password: string, name: string) => {
     try {
-      const { error } = await supabase.auth.signUp({
-        name,
+      // First, sign up the user with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
       });
       
-      if (error) throw error;
+      if (authError) throw authError;
+      if (!authData.user) throw new Error('No user data returned');
 
-      // For now, set mock user data
+      // Then, create a profile in our profiles table
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert([
+          {
+            id: authData.user.id,
+            email,
+            name,
+            password: '**********' // Store a placeholder since the actual password is handled by Auth
+          }
+        ]);
+
+      if (profileError) {
+        // If profile creation fails, we should clean up the auth user
+        await supabase.auth.signOut();
+        throw profileError;
+      }
+
+      // Set the current user
       setCurrentUser({
-        id: 'user1',
+        id: authData.user.id,
         name,
-        avatar: 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
+        avatar: null,
         savedProjects: [],
         postedProjects: []
       });
