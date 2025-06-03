@@ -1,6 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ProjectIdea, User } from '../types';
 import { generateMockProjects } from '../utils/mockData';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL || '',
+  import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+);
 
 interface ProjectContextType {
   projects: ProjectIdea[];
@@ -9,7 +15,10 @@ interface ProjectContextType {
   saveProject: (id: string) => void;
   searchProjects: (query: string, filters: any) => ProjectIdea[];
   getProjectById: (id: string) => ProjectIdea | undefined;
-  currentUser: User;
+  currentUser: User | null;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string, name: string) => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -24,20 +33,80 @@ export const useProjects = () => {
 
 export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [projects, setProjects] = useState<ProjectIdea[]>([]);
-  
-  // Mock current user for demo
-  const [currentUser] = useState<User>({
-    id: 'user1',
-    name: 'Sarah Chen',
-    avatar: 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
-    savedProjects: [],
-    postedProjects: []
-  });
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   useEffect(() => {
+    // Check for existing session
+    const session = supabase.auth.getSession();
+    if (session) {
+      // Get user profile data
+      // For now, we'll use mock data
+      setCurrentUser({
+        id: 'user1',
+        name: 'Sarah Chen',
+        avatar: 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
+        savedProjects: [],
+        postedProjects: []
+      });
+    }
+
     // Initialize with mock data
     setProjects(generateMockProjects());
   }, []);
+
+  const login = async (email: string, password: string) => {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) throw error;
+
+      // For now, set mock user data
+      setCurrentUser({
+        id: 'user1',
+        name: 'Sarah Chen',
+        avatar: 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
+        savedProjects: [],
+        postedProjects: []
+      });
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const signup = async (email: string, password: string, name: string) => {
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name: name,
+          },
+        },
+      });
+      
+      if (error) throw error;
+
+      // For now, set mock user data
+      setCurrentUser({
+        id: 'user1',
+        name,
+        avatar: 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
+        savedProjects: [],
+        postedProjects: []
+      });
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
+    setCurrentUser(null);
+  };
 
   const addProject = (projectData: Omit<ProjectIdea, 'id' | 'createdAt' | 'upvotes'>) => {
     const newProject: ProjectIdea = {
@@ -48,12 +117,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
     
     setProjects(prev => [newProject, ...prev]);
-    
-    // Update user's posted projects
-    const updatedUser = {
-      ...currentUser,
-      postedProjects: [...currentUser.postedProjects, newProject.id]
-    };
   };
 
   const upvoteProject = (id: string) => {
@@ -67,7 +130,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const saveProject = (id: string) => {
-    // Toggle saved status for UI
     setProjects(prev => 
       prev.map(project => 
         project.id === id 
@@ -80,7 +142,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const searchProjects = (query: string, filters: any): ProjectIdea[] => {
     let filteredProjects = [...projects];
     
-    // Filter by search query
     if (query) {
       const lowercasedQuery = query.toLowerCase();
       filteredProjects = filteredProjects.filter(project => 
@@ -90,14 +151,12 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       );
     }
     
-    // Filter by difficulty
     if (filters.difficulty && filters.difficulty.length > 0) {
       filteredProjects = filteredProjects.filter(project => 
         filters.difficulty.includes(project.difficulty)
       );
     }
     
-    // Filter by tags
     if (filters.tags && filters.tags.length > 0) {
       filteredProjects = filteredProjects.filter(project => 
         project.tags.some(tag => filters.tags.includes(tag))
@@ -120,7 +179,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         saveProject,
         searchProjects,
         getProjectById,
-        currentUser
+        currentUser,
+        login,
+        signup,
+        logout
       }}
     >
       {children}

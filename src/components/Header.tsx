@@ -2,15 +2,29 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Button from './ui/Button';
 import { useProjects } from '../context/ProjectContext';
-import { MenuIcon, XIcon, PlusSquareIcon, SearchIcon, CodeIcon } from 'lucide-react';
+import { 
+  MenuIcon, 
+  XIcon, 
+  PlusSquareIcon, 
+  SearchIcon, 
+  CodeIcon,
+  LogOutIcon,
+  LogInIcon,
+  UserPlusIcon
+} from 'lucide-react';
 
 const Header: React.FC = () => {
-  const { currentUser } = useProjects();
+  const { currentUser, logout } = useProjects();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
   };
   
   return (
@@ -51,24 +65,56 @@ const Header: React.FC = () => {
               />
             </div>
             
-            <Button 
-              variant="primary" 
-              size="md"
-              icon={<PlusSquareIcon size={18} />}
-              onClick={() => navigate('/new-project')}
-            >
-              Post Idea
-            </Button>
-            
-            <div className="flex items-center">
-              <Link to="/profile" className="flex items-center">
-                <img 
-                  src={currentUser.avatar} 
-                  alt={currentUser.name}
-                  className="w-8 h-8 rounded-full"
-                />
-              </Link>
-            </div>
+            {currentUser ? (
+              <>
+                <Button 
+                  variant="primary" 
+                  size="md"
+                  icon={<PlusSquareIcon size={18} />}
+                  onClick={() => navigate('/new-project')}
+                >
+                  Post Idea
+                </Button>
+                
+                <div className="flex items-center space-x-4">
+                  <Link to="/profile" className="flex items-center">
+                    <img 
+                      src={currentUser.avatar} 
+                      alt={currentUser.name}
+                      className="w-8 h-8 rounded-full"
+                    />
+                  </Link>
+                  
+                  <Button
+                    variant="ghost"
+                    size="md"
+                    icon={<LogOutIcon size={18} />}
+                    onClick={handleLogout}
+                  >
+                    Logout
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="md"
+                  icon={<LogInIcon size={18} />}
+                  onClick={() => navigate('/login')}
+                >
+                  Sign in
+                </Button>
+                <Button
+                  variant="primary"
+                  size="md"
+                  icon={<UserPlusIcon size={18} />}
+                  onClick={() => navigate('/signup')}
+                >
+                  Sign up
+                </Button>
+              </div>
+            )}
           </div>
           
           {/* Mobile menu button */}
@@ -121,20 +167,51 @@ const Header: React.FC = () => {
             >
               Search
             </Link>
-            <Link 
-              to="/new-project" 
-              className="block px-3 py-2 rounded-md text-base font-medium text-indigo-600 hover:bg-indigo-700 bg-indigo-50"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Post Idea
-            </Link>
-            <Link 
-              to="/profile" 
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Profile
-            </Link>
+            
+            {currentUser ? (
+              <>
+                <Link 
+                  to="/new-project" 
+                  className="block px-3 py-2 rounded-md text-base font-medium text-indigo-600 hover:bg-indigo-700 bg-indigo-50"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Post Idea
+                </Link>
+                <Link 
+                  to="/profile" 
+                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Profile
+                </Link>
+                <button
+                  onClick={() => {
+                    handleLogout();
+                    setIsMenuOpen(false);
+                  }}
+                  className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <Link 
+                  to="/login" 
+                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Sign in
+                </Link>
+                <Link 
+                  to="/signup" 
+                  className="block px-3 py-2 rounded-md text-base font-medium text-indigo-600 hover:bg-indigo-700 bg-indigo-50"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Sign up
+                </Link>
+              </>
+            )}
           </div>
         </div>
       )}

@@ -1,11 +1,19 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ProjectProvider } from './context/ProjectContext';
 import Header from './components/Header';
 import HomePage from './pages/HomePage';
 import SearchPage from './pages/SearchPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import NewProjectPage from './pages/NewProjectPage';
+import LoginPage from './pages/LoginPage';
+import SignupPage from './pages/SignupPage';
+import { useProjects } from './context/ProjectContext';
+
+const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { currentUser } = useProjects();
+  return currentUser ? <>{children}</> : <Navigate to="/login" />;
+};
 
 function App() {
   return (
@@ -16,10 +24,19 @@ function App() {
           <main>
             <Routes>
               <Route path="/" element={<HomePage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/signup" element={<SignupPage />} />
               <Route path="/search" element={<SearchPage />} />
               <Route path="/project/:id" element={<ProjectDetailPage />} />
-              <Route path="/new-project" element={<NewProjectPage />} />
-              <Route path="*" element={<HomePage />} />
+              <Route 
+                path="/new-project" 
+                element={
+                  <PrivateRoute>
+                    <NewProjectPage />
+                  </PrivateRoute>
+                } 
+              />
+              <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </main>
           <footer className="bg-white border-t border-gray-200 py-8">
