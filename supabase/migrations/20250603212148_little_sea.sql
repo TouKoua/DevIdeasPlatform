@@ -19,6 +19,7 @@ ADD COLUMN password text NOT NULL;
 -- Update the handle_new_user function to include email
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS trigger AS $$
+SET search_pass = public
 BEGIN
   INSERT INTO profiles (id, name, email, password, avatar_url)
   VALUES (
