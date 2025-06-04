@@ -23,3 +23,13 @@ export interface User {
   savedProjects: string[];
   postedProjects: string[];
 }
+
+export interface Notification {
+  id: number;
+  title: string;
+  message: string;
+  time: string;
+  unread: boolean;
+  projectId?: string;
+  type: 'upvote' | 'recommendation' | 'welcome';
+}

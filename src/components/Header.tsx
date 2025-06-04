@@ -13,27 +13,38 @@ import {
   UserPlusIcon,
   UserIcon,
   ChevronDownIcon,
-  Settings
+  Settings,
+  BellIcon
 } from 'lucide-react';
 
 const Header: React.FC = () => {
-  const { currentUser, logout, searchProjects } = useProjects();
+  const { currentUser, logout, searchProjects, notifications, markNotificationAsRead, markAllNotificationsAsRead } = useProjects();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const notificationsRef = useRef<HTMLDivElement>(null);
   
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
     if (isProfileOpen) setIsProfileOpen(false);
+    if (isNotificationsOpen) setIsNotificationsOpen(false);
   };
 
   const toggleProfile = () => {
     setIsProfileOpen(!isProfileOpen);
     if (isMenuOpen) setIsMenuOpen(false);
+    if (isNotificationsOpen) setIsNotificationsOpen(false);
+  };
+
+  const toggleNotifications = () => {
+    setIsNotificationsOpen(!isNotificationsOpen);
+    if (isMenuOpen) setIsMenuOpen(false);
+    if (isProfileOpen) setIsProfileOpen(false);
   };
   
   const handleLogout = async () => {
@@ -46,6 +57,9 @@ const Header: React.FC = () => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
         setIsSearchFocused(false);
+      }
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
+        setIsNotificationsOpen(false);
       }
     };
 
@@ -78,7 +92,16 @@ const Header: React.FC = () => {
       navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
-  
+
+  const handleNotificationClick = (notification: Notification) => {
+    markNotificationAsRead(notification.id);
+    setIsNotificationsOpen(false);
+    
+    if (notification.projectId) {
+      navigate(`/project/${notification.projectId}`);
+    }
+  };
+
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -155,6 +178,55 @@ const Header: React.FC = () => {
                 >
                   Post Idea
                 </Button>
+
+                {/* Notifications */}
+                <div className="relative" ref={notificationsRef}>
+                  <button
+                    onClick={toggleNotifications}
+                    className="relative p-1 rounded-full hover:bg-gray-100 focus:outline-none"
+                  >
+                    <BellIcon size={20} className="text-gray-600" />
+                    {notifications.some(n => n.unread) && (
+                      <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
+                    )}
+                  </button>
+
+                  {isNotificationsOpen && (
+                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg py-1 border border-gray-200">
+                      <div className="px-4 py-2 border-b border-gray-100">
+                        <h3 className="text-sm font-medium text-gray-900">Notifications</h3>
+                      </div>
+                      <div className="max-h-96 overflow-y-auto">
+                        {notifications.map((notification) => (
+                          <div
+                            key={notification.id}
+                            className={`px-4 py-3 hover:bg-gray-50 cursor-pointer ${notification.unread ? 'bg-indigo-50' : ''}`}
+                            onClick={() => handleNotificationClick(notification)}
+                          >
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">{notification.title}</p>
+                                <p className="text-sm text-gray-500">{notification.message}</p>
+                                <p className="text-xs text-gray-400 mt-1">{notification.time}</p>
+                              </div>
+                              {notification.unread && (
+                                <div className="w-2 h-2 bg-indigo-500 rounded-full mt-2" />
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="px-4 py-2 border-t border-gray-100">
+                        <button 
+                          className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                          onClick={markAllNotificationsAsRead}
+                        >
+                          Mark all as read
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 
                 <div className="relative">
                   <button

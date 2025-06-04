@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { ProjectIdea, User } from '../types';
+import { ProjectIdea, User, Notification } from '../types';
 import { generateMockProjects } from '../utils/mockData';
 import { createClient } from '@supabase/supabase-js';
 
@@ -10,6 +10,7 @@ const supabase = createClient(
 
 interface ProjectContextType {
   projects: ProjectIdea[];
+  notifications: Notification[];
   addProject: (project: Omit<ProjectIdea, 'id' | 'createdAt' | 'upvotes'>) => void;
   upvoteProject: (id: string) => void;
   saveProject: (id: string) => void;
@@ -19,6 +20,8 @@ interface ProjectContextType {
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
+  markNotificationAsRead: (id: number) => void;
+  markAllNotificationsAsRead: () => void;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -34,13 +37,38 @@ export const useProjects = () => {
 export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [projects, setProjects] = useState<ProjectIdea[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [notifications, setNotifications] = useState<Notification[]>([
+    {
+      id: 1,
+      title: 'New upvote on your project',
+      message: 'Alex Johnson upvoted your Weather Dashboard project',
+      time: '5m ago',
+      unread: true,
+      projectId: 'project-1',
+      type: 'upvote'
+    },
+    {
+      id: 2,
+      title: 'Project recommendation',
+      message: 'Check out this new project that matches your interests',
+      time: '1h ago',
+      unread: true,
+      projectId: 'project-3',
+      type: 'recommendation'
+    },
+    {
+      id: 3,
+      title: 'Welcome to CodeIdeas',
+      message: 'Start exploring project ideas or share your own',
+      time: '2d ago',
+      unread: false,
+      type: 'welcome'
+    }
+  ]);
 
   useEffect(() => {
-    // Check for existing session
     const session = supabase.auth.getSession();
     if (session) {
-      // Get user profile data
-      // For now, we'll use mock data
       setCurrentUser({
         id: 'user1',
         name: 'Sarah Chen',
@@ -50,9 +78,24 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       });
     }
 
-    // Initialize with mock data
     setProjects(generateMockProjects());
   }, []);
+
+  const markNotificationAsRead = (id: number) => {
+    setNotifications(prev =>
+      prev.map(notification =>
+        notification.id === id
+          ? { ...notification, unread: false }
+          : notification
+      )
+    );
+  };
+
+  const markAllNotificationsAsRead = () => {
+    setNotifications(prev =>
+      prev.map(notification => ({ ...notification, unread: false }))
+    );
+  };
 
   const login = async (email: string, password: string) => {
     try {
@@ -63,7 +106,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       
       if (error) throw error;
 
-      // For now, set mock user data
       setCurrentUser({
         id: 'user1',
         name: 'Sarah Chen',
@@ -78,7 +120,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const signup = async (email: string, password: string, name: string) => {
     try {
-      // First, sign up the user with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -87,7 +128,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (authError) throw authError;
       if (!authData.user) throw new Error('No user data returned');
 
-      // Then, create a profile in our profiles table
       const { error: profileError } = await supabase
         .from('profiles')
         .insert([
@@ -95,17 +135,15 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
             id: authData.user.id,
             email,
             name,
-            password: '**********' // Store a placeholder since the actual password is handled by Auth
+            password: '**********'
           }
         ]);
 
       if (profileError) {
-        // If profile creation fails, we should clean up the auth user
         await supabase.auth.signOut();
         throw profileError;
       }
 
-      // Set the current user
       setCurrentUser({
         id: authData.user.id,
         name,
@@ -193,6 +231,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     <ProjectContext.Provider 
       value={{ 
         projects, 
+        notifications,
         addProject, 
         upvoteProject, 
         saveProject,
@@ -201,7 +240,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         currentUser,
         login,
         signup,
-        logout
+        logout,
+        markNotificationAsRead,
+        markAllNotificationsAsRead
       }}
     >
       {children}

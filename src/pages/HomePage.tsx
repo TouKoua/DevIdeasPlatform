@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import ProjectCard from '../components/ProjectCard';
 import { useProjects } from '../context/ProjectContext';
 import { Link } from 'react-router-dom';
-import { TrendingUpIcon, LayersIcon, SearchIcon, ZapIcon, PlusSquareIcon } from 'lucide-react';
+import { TrendingUpIcon, LayersIcon, SearchIcon, ZapIcon, PlusSquareIcon, ClockIcon } from 'lucide-react';
 import Button from '../components/ui/Button';
 
 const HomePage: React.FC = () => {
@@ -11,6 +11,7 @@ const HomePage: React.FC = () => {
 
   const categories = [
     { id: 'all', name: 'All Projects', icon: <LayersIcon size={18} /> },
+    { id: 'recent', name: 'Recent', icon: <ClockIcon size={18} /> },
     { id: 'trending', name: 'Trending', icon: <TrendingUpIcon size={18} /> },
     { id: 'beginner', name: 'Beginner Friendly', icon: <ZapIcon size={18} /> }
   ];
@@ -32,12 +33,14 @@ const HomePage: React.FC = () => {
 
   const getProjectsToDisplay = () => {
     switch (selectedCategory) {
+      case 'recent':
+        return latestProjects;
       case 'trending':
         return trendingProjects;
       case 'beginner':
         return beginnerProjects;
       default:
-        return latestProjects;
+        return projects.slice(0, 12); // Show first 12 projects for "All" category
     }
   };
 
