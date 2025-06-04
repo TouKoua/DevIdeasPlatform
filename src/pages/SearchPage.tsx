@@ -2,26 +2,28 @@ import React, { useState, useEffect } from 'react';
 import ProjectCard from '../components/ProjectCard';
 import SearchFilters from '../components/SearchFilters';
 import { useProjects } from '../context/ProjectContext';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { SearchIcon } from 'lucide-react';
 
 const SearchPage: React.FC = () => {
   const { projects, searchProjects } = useProjects();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const [filters, setFilters] = useState({ difficulty: [], tags: [] });
   const [searchResults, setSearchResults] = useState(projects);
-  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
   
   // Debounce search query
   useEffect(() => {
     const timerId = setTimeout(() => {
       setDebouncedQuery(searchQuery);
+      setSearchParams(searchQuery ? { q: searchQuery } : {});
     }, 300);
     
     return () => {
       clearTimeout(timerId);
     };
-  }, [searchQuery]);
+  }, [searchQuery, setSearchParams]);
   
   // Search when query or filters change
   useEffect(() => {

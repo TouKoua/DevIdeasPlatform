@@ -11,6 +11,7 @@ export interface ProjectIdea {
     avatar: string;
   };
   upvotes: number;
+  upvoted?: boolean;
   estimatedTime?: string;
   saved?: boolean;
 }

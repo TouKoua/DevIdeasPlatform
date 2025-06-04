@@ -21,7 +21,7 @@ const getDifficultyColor = (difficulty: string): string => {
 
 const ProjectDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { getProjectById, projects, upvoteProject, saveProject } = useProjects();
+  const { getProjectById, projects, upvoteProject, saveProject, currentUser } = useProjects();
   const navigate = useNavigate();
   
   const project = getProjectById(id || '');
@@ -117,9 +117,11 @@ const ProjectDetailPage: React.FC = () => {
               
               <div className="flex items-center space-x-4 border-t border-gray-100 pt-6">
                 <Button
-                  variant="outline"
-                  icon={<ThumbsUpIcon size={18} />}
+                  variant={project.upvoted ? 'primary' : 'outline'}
+                  icon={<ThumbsUpIcon size={18} fill={project.upvoted ? "currentColor" : "none"} />}
                   onClick={() => upvoteProject(project.id)}
+                  disabled={!currentUser}
+                  title={currentUser ? undefined : "Sign in to upvote projects"}
                 >
                   Upvote ({project.upvotes})
                 </Button>
@@ -128,6 +130,8 @@ const ProjectDetailPage: React.FC = () => {
                   variant={project.saved ? 'primary' : 'outline'}
                   icon={<BookmarkIcon size={18} />}
                   onClick={() => saveProject(project.id)}
+                  disabled={!currentUser}
+                  title={currentUser ? undefined : "Sign in to save projects"}
                 >
                   {project.saved ? 'Saved' : 'Save for Later'}
                 </Button>

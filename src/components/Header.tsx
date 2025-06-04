@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Button from './ui/Button';
 import { useProjects } from '../context/ProjectContext';
@@ -10,21 +10,73 @@ import {
   CodeIcon,
   LogOutIcon,
   LogInIcon,
-  UserPlusIcon
+  UserPlusIcon,
+  UserIcon,
+  ChevronDownIcon,
+  Settings
 } from 'lucide-react';
 
 const Header: React.FC = () => {
-  const { currentUser, logout } = useProjects();
+  const { currentUser, logout, searchProjects } = useProjects();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
   
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
+    if (isProfileOpen) setIsProfileOpen(false);
   };
 
+  const toggleProfile = () => {
+    setIsProfileOpen(!isProfileOpen);
+    if (isMenuOpen) setIsMenuOpen(false);
+  };
+  
   const handleLogout = async () => {
     await logout();
+    setIsProfileOpen(false);
     navigate('/');
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setIsSearchFocused(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      const results = searchProjects(searchQuery, {});
+      setSearchResults(results.slice(0, 5)); // Show top 5 results
+    } else {
+      setSearchResults([]);
+    }
+  }, [searchQuery]);
+
+  const handleSearchFocus = () => {
+    setIsSearchFocused(true);
+  };
+
+  const handleSearchSelect = (projectId: string) => {
+    setSearchQuery('');
+    setIsSearchFocused(false);
+    navigate(`/project/${projectId}`);
+  };
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && searchQuery.trim()) {
+      setIsSearchFocused(false);
+      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
   };
   
   return (
@@ -53,16 +105,44 @@ const Header: React.FC = () => {
           
           {/* Search and actions */}
           <div className="hidden md:flex items-center space-x-4">
-            <div className="relative">
+            <div className="relative" ref={searchRef}>
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <SearchIcon size={18} className="text-gray-400" />
               </div>
               <input
                 type="text"
                 placeholder="Search projects..."
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm"
-                onFocus={() => navigate('/search')}
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 block w-64 sm:text-sm"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={handleSearchFocus}
+                onKeyDown={handleSearchKeyDown}
               />
+              
+              {/* Search results dropdown */}
+              {isSearchFocused && searchResults.length > 0 && (
+                <div className="absolute mt-2 w-full bg-white rounded-md shadow-lg border border-gray-200 max-h-96 overflow-y-auto">
+                  {searchResults.map((project) => (
+                    <button
+                      key={project.id}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-50 focus:outline-none"
+                      onClick={() => handleSearchSelect(project.id)}
+                    >
+                      <div className="text-sm font-medium text-gray-900">{project.title}</div>
+                      <div className="text-xs text-gray-500 truncate">{project.description}</div>
+                    </button>
+                  ))}
+                  {searchResults.length === 5 && (
+                    <Link
+                      to={`/search?q=${encodeURIComponent(searchQuery)}`}
+                      className="block px-4 py-2 text-sm text-indigo-600 hover:bg-gray-50 border-t border-gray-100"
+                      onClick={() => setIsSearchFocused(false)}
+                    >
+                      See all results
+                    </Link>
+                  )}
+                </div>
+              )}
             </div>
             
             {currentUser ? (
@@ -76,23 +156,52 @@ const Header: React.FC = () => {
                   Post Idea
                 </Button>
                 
-                <div className="flex items-center space-x-4">
-                  <Link to="/profile" className="flex items-center">
+                <div className="relative">
+                  <button
+                    onClick={toggleProfile}
+                    className="flex items-center space-x-2 focus:outline-none"
+                  >
                     <img 
                       src={currentUser.avatar} 
                       alt={currentUser.name}
                       className="w-8 h-8 rounded-full"
                     />
-                  </Link>
+                    <ChevronDownIcon size={16} className={`text-gray-500 transition-transform ${isProfileOpen ? 'rotate-180' : ''}`} />
+                  </button>
                   
-                  <Button
-                    variant="ghost"
-                    size="md"
-                    icon={<LogOutIcon size={18} />}
-                    onClick={handleLogout}
-                  >
-                    Logout
-                  </Button>
+                  {isProfileOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 border border-gray-200">
+                      <div className="px-4 py-2 border-b border-gray-100">
+                        <p className="text-sm font-medium text-gray-900">{currentUser.name}</p>
+                      </div>
+                      
+                      <Link
+                        to="/profile"
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        onClick={() => setIsProfileOpen(false)}
+                      >
+                        <UserIcon size={16} className="mr-2" />
+                        Profile
+                      </Link>
+                      
+                      <Link
+                        to="/settings"
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        onClick={() => setIsProfileOpen(false)}
+                      >
+                        <Settings size={16} className="mr-2" />
+                        Settings
+                      </Link>
+                      
+                      <button
+                        onClick={handleLogout}
+                        className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-50"
+                      >
+                        <LogOutIcon size={16} className="mr-2" />
+                        Logout
+                      </button>
+                    </div>
+                  )}
                 </div>
               </>
             ) : (
@@ -184,12 +293,19 @@ const Header: React.FC = () => {
                 >
                   Profile
                 </Link>
+                <Link 
+                  to="/settings" 
+                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Settings
+                </Link>
                 <button
                   onClick={() => {
                     handleLogout();
                     setIsMenuOpen(false);
                   }}
-                  className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
+                  className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-600 hover:text-red-700 hover:bg-gray-50"
                 >
                   Logout
                 </button>
