@@ -3,10 +3,14 @@ import { ProjectIdea, User } from '../types';
 import { generateMockProjects } from '../utils/mockData';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL || '',
-  import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-);
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase credentials. Please click "Connect to Supabase" button to set up your project.');
+}
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 interface ProjectContextType {
   projects: ProjectIdea[];
