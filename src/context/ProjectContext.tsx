@@ -106,10 +106,19 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       
       if (error) throw error;
 
+      // Fetch user profile after successful login
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', (await supabase.auth.getUser()).data.user?.id)
+        .single();
+
+      if (profileError) throw profileError;
+
       setCurrentUser({
-        id: 'user1',
-        name: 'Sarah Chen',
-        avatar: 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
+        id: profile.id,
+        name: profile.name,
+        avatar: profile.avatar_url || 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
         savedProjects: [],
         postedProjects: []
       });
@@ -118,7 +127,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-   const signup = async (email: string, password: string, name: string) => {
+  const signup = async (email: string, password: string, name: string) => {
     try {
       // First, sign up the user with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -135,9 +144,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .insert([
           {
             id: authData.user.id,
-            email,
             name,
-            password: '**********' // Store a placeholder since the actual password is handled by Auth
+            avatar_url: null
           }
         ]);
 
@@ -151,7 +159,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setCurrentUser({
         id: authData.user.id,
         name,
-        avatar: null,
+        avatar: 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
         savedProjects: [],
         postedProjects: []
       });
