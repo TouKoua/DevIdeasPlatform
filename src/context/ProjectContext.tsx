@@ -133,32 +133,16 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
+        name,
       });
       
       if (authError) throw authError;
       if (!authData.user) throw new Error('No user data returned');
 
-      // Then, create a profile in our profiles table
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .insert([
-          {
-            id: authData.user.id,
-            name,
-            avatar_url: null
-          }
-        ]);
-
-      if (profileError) {
-        // If profile creation fails, we should clean up the auth user
-        await supabase.auth.signOut();
-        throw profileError;
-      }
-
       // Set the current user
       setCurrentUser({
         id: authData.user.id,
-        name,
+        name: authData.user.user_metadata.name,
         avatar: 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
         savedProjects: [],
         postedProjects: []
