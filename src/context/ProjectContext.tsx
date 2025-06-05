@@ -140,7 +140,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       // Then, create a profile in our profiles table
       const { error: profileError } = await supabase
-        .from('profiles')
+        .from("profiles")
         .insert([
           {
             id: authData.user.id,
