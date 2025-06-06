@@ -6,9 +6,12 @@ import HomePage from './pages/HomePage';
 import SearchPage from './pages/SearchPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import NewProjectPage from './pages/NewProjectPage';
+import EditProjectPage from './pages/EditProjectPage';
+import ContributionRequestsPage from './pages/ContributionRequestsPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import ProfilePage from './pages/ProfilePage';
+import UserProfilePage from './pages/UserProfilePage';
 import { useProjects } from './context/ProjectContext';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -30,6 +33,22 @@ function App() {
               <Route path="/search" element={<SearchPage />} />
               <Route path="/project/:id" element={<ProjectDetailPage />} />
               <Route 
+                path="/project/:id/edit" 
+                element={
+                  <PrivateRoute>
+                    <EditProjectPage />
+                  </PrivateRoute>
+                } 
+              />
+              <Route 
+                path="/project/:id/contributions" 
+                element={
+                  <PrivateRoute>
+                    <ContributionRequestsPage />
+                  </PrivateRoute>
+                } 
+              />
+              <Route 
                 path="/new-project" 
                 element={
                   <PrivateRoute>
@@ -45,6 +64,7 @@ function App() {
                   </PrivateRoute>
                 }
               />
+              <Route path="/user/:userId" element={<UserProfilePage />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </main>

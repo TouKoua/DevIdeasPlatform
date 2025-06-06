@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useProjects } from '../context/ProjectContext';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
+import Textarea from '../components/ui/Textarea';
 import ProjectCard from '../components/ProjectCard';
-import { ThumbsUpIcon, BookmarkIcon, ClockIcon, TagIcon, ArrowLeftIcon, UserIcon } from 'lucide-react';
+import { ThumbsUpIcon, BookmarkIcon, ClockIcon, CodeIcon, CpuIcon, ArrowLeftIcon, UserIcon, EditIcon, MailIcon, UsersIcon, MessageSquareIcon, SendIcon } from 'lucide-react';
 
 const getDifficultyColor = (difficulty: string): string => {
   switch (difficulty) {
@@ -21,10 +22,23 @@ const getDifficultyColor = (difficulty: string): string => {
 
 const ProjectDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { getProjectById, projects, upvoteProject, saveProject, currentUser } = useProjects();
+  const { 
+    getProjectById, 
+    projects, 
+    upvoteProject, 
+    saveProject, 
+    currentUser,
+    createContributionRequest,
+    getContributionRequestsForProject
+  } = useProjects();
   const navigate = useNavigate();
+  const [isRequestingContribution, setIsRequestingContribution] = useState(false);
+  const [contributionRequestSent, setContributionRequestSent] = useState(false);
+  const [showContributionForm, setShowContributionForm] = useState(false);
+  const [contributionMessage, setContributionMessage] = useState('');
   
   const project = getProjectById(id || '');
+  const contributionRequests = getContributionRequestsForProject(id || '');
   
   if (!project) {
     return (
@@ -42,26 +56,68 @@ const ProjectDetailPage: React.FC = () => {
     );
   }
   
-  // Get similar projects by tags
+  // Get similar projects by programming languages and skills
   const similarProjects = projects
     .filter(p => 
-      p.id !== project.id && 
-      p.tags.some(tag => project.tags.includes(tag))
+      p.id !== project.id && (
+        p.programmingLanguages.some(lang => project.programmingLanguages.includes(lang)) ||
+        p.programmingSkills.some(skill => project.programmingSkills.includes(skill))
+      )
     )
     .sort(() => 0.5 - Math.random()) // Shuffle
     .slice(0, 3);
   
-  const formattedDate = new Date(project.createdAt).toLocaleDateString('en-US', {
+  // Use updatedAt if available, otherwise use createdAt
+  const displayDate = project.updatedAt || project.createdAt;
+  const isUpdated = !!project.updatedAt;
+  
+  const formattedDate = new Date(displayDate).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric'
   });
+
+  const isOwner = currentUser && currentUser.id === project.createdBy.id;
+  const pendingRequests = contributionRequests.filter(req => req.status === 'pending');
+  
+  // Check if current user has already requested to contribute
+  const hasRequestedContribution = currentUser && contributionRequests.some(
+    req => req.requesterId === currentUser.id
+  );
+
+  const handleRequestContribution = async () => {
+    if (!currentUser || showContributionForm) return;
+    setShowContributionForm(true);
+  };
+
+  const handleSubmitContributionRequest = async () => {
+    if (!currentUser) return;
+
+    setIsRequestingContribution(true);
+    
+    try {
+      await createContributionRequest(project.id, contributionMessage.trim() || undefined);
+      setContributionRequestSent(true);
+      setShowContributionForm(false);
+      setContributionMessage('');
+    } catch (error) {
+      console.error('Error sending contribution request:', error);
+      alert('Failed to send contribution request. Please try again.');
+    } finally {
+      setIsRequestingContribution(false);
+    }
+  };
+
+  const handleCancelContributionRequest = () => {
+    setShowContributionForm(false);
+    setContributionMessage('');
+  };
   
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <button 
         onClick={() => navigate(-1)}
-        className="flex items-center text-gray-600 hover:text-indigo-600 mb-6"
+        className="flex items-center text-gray-600 hover:text-indigo-600 mb-6 transition-colors"
       >
         <ArrowLeftIcon size={18} className="mr-2" />
         Back
@@ -73,17 +129,66 @@ const ProjectDetailPage: React.FC = () => {
             <div className="p-6">
               <div className="flex flex-wrap items-start justify-between gap-2 mb-4">
                 <h1 className="text-2xl font-bold text-gray-900">{project.title}</h1>
-                <Badge 
-                  variant={getDifficultyColor(project.difficulty)} 
-                  size="lg"
-                >
-                  {project.difficulty}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge 
+                    variant={getDifficultyColor(project.difficulty)} 
+                    size="lg"
+                  >
+                    {project.difficulty}
+                  </Badge>
+                  {isUpdated && (
+                    <Badge variant="primary" size="lg">
+                      Updated
+                    </Badge>
+                  )}
+                  {isOwner && (
+                    <div className="flex gap-2">
+                      <Link to={`/project/${project.id}/edit`}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          icon={<EditIcon size={16} />}
+                        >
+                          Edit
+                        </Button>
+                      </Link>
+                      {pendingRequests.length > 0 && (
+                        <Link to={`/project/${project.id}/contributions`}>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            icon={<UsersIcon size={16} />}
+                          >
+                            Requests ({pendingRequests.length})
+                          </Button>
+                        </Link>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
               
               <div className="flex items-center text-gray-600 mb-6">
                 <UserIcon size={16} className="mr-1" />
-                <span>Posted by {project.createdBy.name} on {formattedDate}</span>
+                <span>
+                  {isUpdated ? 'Updated' : 'Posted'} by{' '}
+                  <Link 
+                    to={`/user/${project.createdBy.id}`}
+                    className="text-indigo-600 hover:text-indigo-800 font-medium transition-colors"
+                  >
+                    {project.createdBy.name}
+                  </Link>
+                  {' '}on {formattedDate}
+                  {isUpdated && (
+                    <span className="text-gray-500 ml-2">
+                      (Originally posted {new Date(project.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })})
+                    </span>
+                  )}
+                </span>
               </div>
               
               <div className="prose max-w-none mb-6">
@@ -97,19 +202,39 @@ const ProjectDetailPage: React.FC = () => {
                 </div>
               )}
               
-              <div className="mb-6">
+              {/* Programming Languages */}
+              <div className="mb-4">
                 <div className="flex items-center mb-2">
-                  <TagIcon size={18} className="text-gray-500 mr-2" />
-                  <span className="text-gray-700 font-medium">Tags:</span>
+                  <CodeIcon size={18} className="text-gray-500 mr-2" />
+                  <span className="text-gray-700 font-medium">Programming Languages:</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {project.tags.map((tag) => (
+                  {project.programmingLanguages.map((language) => (
                     <Link 
-                      key={tag} 
-                      to={`/search?tag=${tag}`} 
-                      className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1 rounded-full text-sm"
+                      key={language} 
+                      to={`/search?language=${language}`} 
+                      className="bg-indigo-100 hover:bg-indigo-200 text-indigo-800 px-3 py-1 rounded-full text-sm transition-colors"
                     >
-                      {tag}
+                      {language}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              {/* Programming Skills */}
+              <div className="mb-6">
+                <div className="flex items-center mb-2">
+                  <CpuIcon size={18} className="text-gray-500 mr-2" />
+                  <span className="text-gray-700 font-medium">Programming Skills & Technologies:</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {project.programmingSkills.map((skill) => (
+                    <Link 
+                      key={skill} 
+                      to={`/search?skill=${skill}`} 
+                      className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-3 py-1 rounded-full text-sm transition-colors"
+                    >
+                      {skill}
                     </Link>
                   ))}
                 </div>
@@ -135,7 +260,80 @@ const ProjectDetailPage: React.FC = () => {
                 >
                   {project.saved ? 'Saved' : 'Save for Later'}
                 </Button>
+
+                {/* Request Contribution Button */}
+                {currentUser && !isOwner && !hasRequestedContribution && (
+                  <Button
+                    variant="outline"
+                    icon={<MailIcon size={18} />}
+                    onClick={handleRequestContribution}
+                    title="Request to contribute to this project"
+                  >
+                    Request Contribution
+                  </Button>
+                )}
+
+                {/* Show status if user has already requested */}
+                {currentUser && !isOwner && hasRequestedContribution && (
+                  <Button
+                    variant="secondary"
+                    icon={<MessageSquareIcon size={18} />}
+                    disabled
+                  >
+                    Request Sent
+                  </Button>
+                )}
               </div>
+
+              {/* Contribution Request Form */}
+              {showContributionForm && (
+                <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <h3 className="text-lg font-medium text-gray-900 mb-3">Request to Contribute</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Send a message to {project.createdBy.name} explaining why you'd like to contribute to this project.
+                  </p>
+                  
+                  <Textarea
+                    id="contributionMessage"
+                    name="contributionMessage"
+                    placeholder="Hi! I'm interested in contributing to your project because..."
+                    value={contributionMessage}
+                    onChange={(e) => setContributionMessage(e.target.value)}
+                    rows={4}
+                    className="mb-4"
+                  />
+                  
+                  <div className="flex space-x-3">
+                    <Button
+                      variant="primary"
+                      icon={<SendIcon size={18} />}
+                      onClick={handleSubmitContributionRequest}
+                      disabled={isRequestingContribution}
+                    >
+                      {isRequestingContribution ? 'Sending...' : 'Send Request'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handleCancelContributionRequest}
+                      disabled={isRequestingContribution}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Contribution Request Success Message */}
+              {contributionRequestSent && (
+                <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-md">
+                  <div className="flex items-center">
+                    <MailIcon size={16} className="text-green-600 mr-2" />
+                    <p className="text-sm text-green-800">
+                      Your contribution request has been sent to {project.createdBy.name}. They will be notified and can respond to your request.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -143,22 +341,61 @@ const ProjectDetailPage: React.FC = () => {
         <div className="lg:col-span-1">
           <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 mb-6">
             <div className="flex items-center mb-4">
-              <img 
-                src={project.createdBy.avatar} 
-                alt={project.createdBy.name}
-                className="w-12 h-12 rounded-full mr-4"
-              />
+              <Link to={`/user/${project.createdBy.id}`}>
+                <img 
+                  src={project.createdBy.avatar} 
+                  alt={project.createdBy.name}
+                  className="w-12 h-12 rounded-full mr-4 hover:opacity-80 transition-opacity"
+                />
+              </Link>
               <div>
-                <h3 className="font-medium text-gray-900">{project.createdBy.name}</h3>
+                <Link 
+                  to={`/user/${project.createdBy.id}`}
+                  className="font-medium text-gray-900 hover:text-indigo-600 transition-colors"
+                >
+                  {project.createdBy.name}
+                </Link>
                 <p className="text-gray-500 text-sm">Project Creator</p>
               </div>
             </div>
-            <Link to={`/profile/${project.createdBy.id}`}>
+            <Link to={`/user/${project.createdBy.id}`}>
               <Button variant="outline" fullWidth>
                 View Profile
               </Button>
             </Link>
           </div>
+
+          {/* Contribution Requests Summary for Owner */}
+          {isOwner && contributionRequests.length > 0 && (
+            <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 mb-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Contribution Requests</h3>
+              <div className="space-y-2 mb-4">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Pending:</span>
+                  <span className="font-medium text-orange-600">
+                    {contributionRequests.filter(r => r.status === 'pending').length}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Accepted:</span>
+                  <span className="font-medium text-green-600">
+                    {contributionRequests.filter(r => r.status === 'accepted').length}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Declined:</span>
+                  <span className="font-medium text-red-600">
+                    {contributionRequests.filter(r => r.status === 'declined').length}
+                  </span>
+                </div>
+              </div>
+              <Link to={`/project/${project.id}/contributions`}>
+                <Button variant="primary" fullWidth icon={<UsersIcon size={18} />}>
+                  Manage Requests
+                </Button>
+              </Link>
+            </div>
+          )}
           
           {similarProjects.length > 0 && (
             <div>
