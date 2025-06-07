@@ -157,16 +157,19 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       
       if (error) throw error;
 
+      // Fetch user profile after successful login
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', (await supabase.auth.getUser()).data.user?.id)
+        .single();
+
+      if (profileError) throw profileError;
+
       setCurrentUser({
-        id: 'user1',
-        name: 'Sarah Chen',
-        avatar: 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
-        bio: 'Full-stack developer passionate about creating innovative web applications. Love working with React, Node.js, and exploring new technologies.',
-        location: 'San Francisco, CA',
-        joinedDate: new Date('2023-01-15'),
-        website: 'https://sarahchen.dev',
-        github: 'sarahchen',
-        twitter: 'sarahchen_dev',
+        id: profile.id,
+        name: profile.name,
+        avatar: profile.avatar_url || 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
         savedProjects: [],
         postedProjects: []
       });
@@ -180,34 +183,21 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            name: name
+          }
+        }
       });
       
       if (authError) throw authError;
       if (!authData.user) throw new Error('No user data returned');
 
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert([
-          {
-            id: authData.user.id,
-            email,
-            name,
-            password: '**********'
-          }
-        ]);
-
-      if (profileError) {
-        await supabase.auth.signOut();
-        throw profileError;
-      }
-
+      // Set the current user
       setCurrentUser({
         id: authData.user.id,
-        name,
+        name: authData.user.user_metadata.name,
         avatar: 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
-        bio: '',
-        location: '',
-        joinedDate: new Date(),
         savedProjects: [],
         postedProjects: []
       });
