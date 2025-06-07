@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { ProjectIdea, User, Notification } from '../types';
-import { generateMockProjects } from '../utils/mockData';
+import { ProjectIdea, User, Notification, ContributionRequest } from '../types';
+import { generateMockProjects, generateMockUsers } from '../utils/mockData';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -10,12 +10,21 @@ const supabase = createClient(
 
 interface ProjectContextType {
   projects: ProjectIdea[];
+  users: User[];
   notifications: Notification[];
+  contributionRequests: ContributionRequest[];
   addProject: (project: Omit<ProjectIdea, 'id' | 'createdAt' | 'upvotes'>) => void;
+  updateProject: (id: string, updates: Partial<Pick<ProjectIdea, 'title' | 'description' | 'difficulty' | 'programmingLanguages' | 'programmingSkills' | 'estimatedTime'>>) => Promise<void>;
   upvoteProject: (id: string) => void;
   saveProject: (id: string) => void;
   searchProjects: (query: string, filters: any) => ProjectIdea[];
   getProjectById: (id: string) => ProjectIdea | undefined;
+  getUserById: (id: string) => User | undefined;
+  getProjectsByUserId: (userId: string) => ProjectIdea[];
+  createContributionRequest: (projectId: string, message?: string) => Promise<void>;
+  updateContributionRequestStatus: (requestId: string, status: 'accepted' | 'declined', responseMessage?: string) => Promise<void>;
+  getContributionRequestsForProject: (projectId: string) => ContributionRequest[];
+  getContributionRequestsByUser: (userId: string) => ContributionRequest[];
   currentUser: User | null;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
@@ -36,6 +45,8 @@ export const useProjects = () => {
 
 export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [projects, setProjects] = useState<ProjectIdea[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [contributionRequests, setContributionRequests] = useState<ContributionRequest[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([
     {
@@ -73,12 +84,52 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         id: 'user1',
         name: 'Sarah Chen',
         avatar: 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
+        bio: 'Full-stack developer passionate about creating innovative web applications. Love working with React, Node.js, and exploring new technologies.',
+        location: 'San Francisco, CA',
+        joinedDate: new Date('2023-01-15'),
+        website: 'https://sarahchen.dev',
+        github: 'sarahchen',
+        twitter: 'sarahchen_dev',
         savedProjects: [],
         postedProjects: []
       });
     }
 
+    const mockUsers = generateMockUsers();
+    setUsers(mockUsers);
     setProjects(generateMockProjects());
+    
+    // Generate some mock contribution requests
+    setContributionRequests([
+      {
+        id: 'req-1',
+        projectId: 'project-1',
+        requesterId: 'user3',
+        message: 'I have experience with React and weather APIs. Would love to contribute to this project!',
+        status: 'pending',
+        createdAt: new Date('2023-11-15'),
+        updatedAt: new Date('2023-11-15')
+      },
+      {
+        id: 'req-2',
+        projectId: 'project-1',
+        requesterId: 'user4',
+        message: 'This looks like a great project. I can help with the backend API integration.',
+        status: 'pending',
+        createdAt: new Date('2023-11-14'),
+        updatedAt: new Date('2023-11-14')
+      },
+      {
+        id: 'req-3',
+        projectId: 'project-2',
+        requesterId: 'user1',
+        message: 'I love CLI tools and have built several in Python. Happy to collaborate!',
+        status: 'accepted',
+        createdAt: new Date('2023-11-10'),
+        updatedAt: new Date('2023-11-12'),
+        responseMessage: 'Great! I\'d love to have your help. Let me know your GitHub username and I\'ll add you as a collaborator.'
+      }
+    ]);
   }, []);
 
   const markNotificationAsRead = (id: number) => {
@@ -171,6 +222,16 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setProjects(prev => [newProject, ...prev]);
   };
 
+  const updateProject = async (id: string, updates: Partial<Pick<ProjectIdea, 'title' | 'description' | 'difficulty' | 'programmingLanguages' | 'programmingSkills' | 'estimatedTime'>>) => {
+    setProjects(prev => 
+      prev.map(project => 
+        project.id === id 
+          ? { ...project, ...updates, updatedAt: new Date() }
+          : project
+      )
+    );
+  };
+
   const upvoteProject = (id: string) => {
     setProjects(prev => 
       prev.map(project => 
@@ -203,7 +264,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       filteredProjects = filteredProjects.filter(project => 
         project.title.toLowerCase().includes(lowercasedQuery) || 
         project.description.toLowerCase().includes(lowercasedQuery) ||
-        project.tags.some(tag => tag.toLowerCase().includes(lowercasedQuery))
+        project.programmingLanguages.some(lang => lang.toLowerCase().includes(lowercasedQuery)) ||
+        project.programmingSkills.some(skill => skill.toLowerCase().includes(lowercasedQuery))
       );
     }
     
@@ -213,9 +275,15 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       );
     }
     
-    if (filters.tags && filters.tags.length > 0) {
+    if (filters.programmingLanguages && filters.programmingLanguages.length > 0) {
       filteredProjects = filteredProjects.filter(project => 
-        project.tags.some(tag => filters.tags.includes(tag))
+        project.programmingLanguages.some(lang => filters.programmingLanguages.includes(lang))
+      );
+    }
+
+    if (filters.programmingSkills && filters.programmingSkills.length > 0) {
+      filteredProjects = filteredProjects.filter(project => 
+        project.programmingSkills.some(skill => filters.programmingSkills.includes(skill))
       );
     }
     
@@ -226,16 +294,81 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return projects.find(project => project.id === id);
   };
 
+  const getUserById = (id: string): User | undefined => {
+    return users.find(user => user.id === id);
+  };
+
+  const getProjectsByUserId = (userId: string): ProjectIdea[] => {
+    return projects.filter(project => project.createdBy.id === userId);
+  };
+
+  const createContributionRequest = async (projectId: string, message?: string) => {
+    if (!currentUser) throw new Error('Must be logged in to create contribution request');
+    
+    const newRequest: ContributionRequest = {
+      id: `req-${Date.now()}`,
+      projectId,
+      requesterId: currentUser.id,
+      message,
+      status: 'pending',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    setContributionRequests(prev => [newRequest, ...prev]);
+  };
+
+  const updateContributionRequestStatus = async (requestId: string, status: 'accepted' | 'declined', responseMessage?: string) => {
+    setContributionRequests(prev =>
+      prev.map(request =>
+        request.id === requestId
+          ? { ...request, status, responseMessage, updatedAt: new Date() }
+          : request
+      )
+    );
+  };
+
+  const getContributionRequestsForProject = (projectId: string): ContributionRequest[] => {
+    return contributionRequests
+      .filter(request => request.projectId === projectId)
+      .map(request => ({
+        ...request,
+        project: getProjectById(request.projectId),
+        requester: getUserById(request.requesterId)
+      }))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  };
+
+  const getContributionRequestsByUser = (userId: string): ContributionRequest[] => {
+    return contributionRequests
+      .filter(request => request.requesterId === userId)
+      .map(request => ({
+        ...request,
+        project: getProjectById(request.projectId),
+        requester: getUserById(request.requesterId)
+      }))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  };
+
   return (
     <ProjectContext.Provider 
       value={{ 
-        projects, 
+        projects,
+        users,
         notifications,
-        addProject, 
+        contributionRequests,
+        addProject,
+        updateProject,
         upvoteProject, 
         saveProject,
         searchProjects,
         getProjectById,
+        getUserById,
+        getProjectsByUserId,
+        createContributionRequest,
+        updateContributionRequestStatus,
+        getContributionRequestsForProject,
+        getContributionRequestsByUser,
         currentUser,
         login,
         signup,

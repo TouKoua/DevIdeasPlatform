@@ -13,14 +13,21 @@ const difficultyOptions = [
   { value: 'advanced', label: 'Advanced' }
 ];
 
-const popularTags = [
-  'react', 'javascript', 'python', 'web', 'mobile', 'api', 
-  'fullstack', 'frontend', 'backend', 'database', 'ai', 'game'
+const popularLanguages = [
+  'JavaScript', 'TypeScript', 'Python', 'Java', 'C++', 'C#', 'Go', 'Rust',
+  'PHP', 'Ruby', 'Swift', 'Kotlin', 'HTML', 'CSS'
+];
+
+const popularSkills = [
+  'React', 'Vue.js', 'Angular', 'Node.js', 'Django', 'Flask', 'Spring Boot',
+  'MongoDB', 'PostgreSQL', 'MySQL', 'AWS', 'Docker', 'Machine Learning',
+  'React Native', 'Flutter', 'GraphQL', 'REST API', 'DevOps', 'Testing'
 ];
 
 const SearchFilters: React.FC<SearchFiltersProps> = ({ onApplyFilters }) => {
   const [selectedDifficulties, setSelectedDifficulties] = useState<string[]>([]);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   
   const toggleDifficulty = (difficulty: string) => {
@@ -31,31 +38,42 @@ const SearchFilters: React.FC<SearchFiltersProps> = ({ onApplyFilters }) => {
     }
   };
   
-  const toggleTag = (tag: string) => {
-    if (selectedTags.includes(tag)) {
-      setSelectedTags(selectedTags.filter(t => t !== tag));
+  const toggleLanguage = (language: string) => {
+    if (selectedLanguages.includes(language)) {
+      setSelectedLanguages(selectedLanguages.filter(l => l !== language));
     } else {
-      setSelectedTags([...selectedTags, tag]);
+      setSelectedLanguages([...selectedLanguages, language]);
+    }
+  };
+
+  const toggleSkill = (skill: string) => {
+    if (selectedSkills.includes(skill)) {
+      setSelectedSkills(selectedSkills.filter(s => s !== skill));
+    } else {
+      setSelectedSkills([...selectedSkills, skill]);
     }
   };
   
   const applyFilters = () => {
     onApplyFilters({
       difficulty: selectedDifficulties,
-      tags: selectedTags
+      programmingLanguages: selectedLanguages,
+      programmingSkills: selectedSkills
     });
   };
   
   const clearFilters = () => {
     setSelectedDifficulties([]);
-    setSelectedTags([]);
+    setSelectedLanguages([]);
+    setSelectedSkills([]);
     onApplyFilters({
       difficulty: [],
-      tags: []
+      programmingLanguages: [],
+      programmingSkills: []
     });
   };
   
-  const hasActiveFilters = selectedDifficulties.length > 0 || selectedTags.length > 0;
+  const hasActiveFilters = selectedDifficulties.length > 0 || selectedLanguages.length > 0 || selectedSkills.length > 0;
   
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm mb-6">
@@ -104,19 +122,38 @@ const SearchFilters: React.FC<SearchFiltersProps> = ({ onApplyFilters }) => {
           </div>
           
           <div className="mb-4">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Popular Tags</h4>
+            <h4 className="text-sm font-medium text-gray-700 mb-2">Programming Languages</h4>
             <div className="flex flex-wrap gap-2">
-              {popularTags.map((tag) => (
+              {popularLanguages.map((language) => (
                 <button
-                  key={tag}
-                  onClick={() => toggleTag(tag)}
+                  key={language}
+                  onClick={() => toggleLanguage(language)}
                   className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    selectedTags.includes(tag)
+                    selectedLanguages.includes(language)
                       ? 'bg-indigo-100 text-indigo-800'
                       : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
                   }`}
                 >
-                  {tag}
+                  {language}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <h4 className="text-sm font-medium text-gray-700 mb-2">Programming Skills</h4>
+            <div className="flex flex-wrap gap-2">
+              {popularSkills.map((skill) => (
+                <button
+                  key={skill}
+                  onClick={() => toggleSkill(skill)}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    selectedSkills.includes(skill)
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                  }`}
+                >
+                  {skill}
                 </button>
               ))}
             </div>
@@ -150,13 +187,27 @@ const SearchFilters: React.FC<SearchFiltersProps> = ({ onApplyFilters }) => {
               </Badge>
             ))}
             
-            {selectedTags.map((tag) => (
-              <Badge key={tag} variant="default" size="md">
+            {selectedLanguages.map((language) => (
+              <Badge key={language} variant="primary" size="md">
                 <span className="flex items-center">
-                  {tag}
+                  {language}
                   <button
-                    onClick={() => toggleTag(tag)}
-                    className="ml-1.5 text-gray-700 hover:text-gray-900"
+                    onClick={() => toggleLanguage(language)}
+                    className="ml-1.5 text-indigo-700 hover:text-indigo-900"
+                  >
+                    <XIcon size={14} />
+                  </button>
+                </span>
+              </Badge>
+            ))}
+
+            {selectedSkills.map((skill) => (
+              <Badge key={skill} variant="secondary" size="md">
+                <span className="flex items-center">
+                  {skill}
+                  <button
+                    onClick={() => toggleSkill(skill)}
+                    className="ml-1.5 text-emerald-700 hover:text-emerald-900"
                   >
                     <XIcon size={14} />
                   </button>

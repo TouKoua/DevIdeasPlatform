@@ -13,6 +13,26 @@ const difficultyOptions = [
   { value: 'advanced', label: 'Advanced' }
 ];
 
+// Common programming languages
+const commonLanguages = [
+  'JavaScript', 'TypeScript', 'Python', 'Java', 'C++', 'C#', 'Go', 'Rust',
+  'PHP', 'Ruby', 'Swift', 'Kotlin', 'Dart', 'Scala', 'R', 'MATLAB',
+  'HTML', 'CSS', 'SQL', 'Shell', 'PowerShell', 'Lua', 'Perl', 'Haskell'
+];
+
+// Common programming skills
+const commonSkills = [
+  'React', 'Vue.js', 'Angular', 'Node.js', 'Express.js', 'Django', 'Flask',
+  'Spring Boot', 'Laravel', 'Ruby on Rails', 'ASP.NET', 'FastAPI',
+  'MongoDB', 'PostgreSQL', 'MySQL', 'Redis', 'GraphQL', 'REST API',
+  'Docker', 'Kubernetes', 'AWS', 'Azure', 'GCP', 'Firebase',
+  'Machine Learning', 'Deep Learning', 'TensorFlow', 'PyTorch',
+  'React Native', 'Flutter', 'Electron', 'Unity', 'Unreal Engine',
+  'Blockchain', 'Smart Contracts', 'Web3', 'Solidity',
+  'DevOps', 'CI/CD', 'Git', 'Linux', 'Microservices', 'WebSockets',
+  'Testing', 'Jest', 'Cypress', 'Selenium', 'JUnit'
+];
+
 const ProjectForm: React.FC = () => {
   const { addProject, currentUser } = useProjects();
   const navigate = useNavigate();
@@ -22,15 +42,18 @@ const ProjectForm: React.FC = () => {
     description: '',
     difficulty: '',
     estimatedTime: '',
-    tags: [] as string[],
-    currentTag: ''
+    programmingLanguages: [] as string[],
+    programmingSkills: [] as string[],
+    currentLanguage: '',
+    currentSkill: ''
   });
   
   const [errors, setErrors] = useState({
     title: '',
     description: '',
     difficulty: '',
-    tags: ''
+    programmingLanguages: '',
+    programmingSkills: ''
   });
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -43,37 +66,89 @@ const ProjectForm: React.FC = () => {
     }
   };
   
-  const handleAddTag = () => {
-    if (!formData.currentTag.trim()) return;
+  const handleAddLanguage = () => {
+    if (!formData.currentLanguage.trim()) return;
     
-    // Check if tag already exists
-    if (formData.tags.includes(formData.currentTag.trim().toLowerCase())) {
+    // Check if language already exists
+    if (formData.programmingLanguages.includes(formData.currentLanguage.trim())) {
       return;
     }
     
     setFormData({
       ...formData,
-      tags: [...formData.tags, formData.currentTag.trim().toLowerCase()],
-      currentTag: ''
+      programmingLanguages: [...formData.programmingLanguages, formData.currentLanguage.trim()],
+      currentLanguage: ''
     });
     
-    // Clear tag error if it exists
-    if (errors.tags) {
-      setErrors({ ...errors, tags: '' });
+    // Clear error if it exists
+    if (errors.programmingLanguages) {
+      setErrors({ ...errors, programmingLanguages: '' });
+    }
+  };
+
+  const handleAddSkill = () => {
+    if (!formData.currentSkill.trim()) return;
+    
+    // Check if skill already exists
+    if (formData.programmingSkills.includes(formData.currentSkill.trim())) {
+      return;
+    }
+    
+    setFormData({
+      ...formData,
+      programmingSkills: [...formData.programmingSkills, formData.currentSkill.trim()],
+      currentSkill: ''
+    });
+    
+    // Clear error if it exists
+    if (errors.programmingSkills) {
+      setErrors({ ...errors, programmingSkills: '' });
     }
   };
   
-  const handleRemoveTag = (tagToRemove: string) => {
+  const handleRemoveLanguage = (languageToRemove: string) => {
     setFormData({
       ...formData,
-      tags: formData.tags.filter(tag => tag !== tagToRemove)
+      programmingLanguages: formData.programmingLanguages.filter(lang => lang !== languageToRemove)
+    });
+  };
+
+  const handleRemoveSkill = (skillToRemove: string) => {
+    setFormData({
+      ...formData,
+      programmingSkills: formData.programmingSkills.filter(skill => skill !== skillToRemove)
     });
   };
   
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleLanguageKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      handleAddTag();
+      handleAddLanguage();
+    }
+  };
+
+  const handleSkillKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddSkill();
+    }
+  };
+
+  const handleQuickAddLanguage = (language: string) => {
+    if (!formData.programmingLanguages.includes(language)) {
+      setFormData({
+        ...formData,
+        programmingLanguages: [...formData.programmingLanguages, language]
+      });
+    }
+  };
+
+  const handleQuickAddSkill = (skill: string) => {
+    if (!formData.programmingSkills.includes(skill)) {
+      setFormData({
+        ...formData,
+        programmingSkills: [...formData.programmingSkills, skill]
+      });
     }
   };
   
@@ -82,7 +157,8 @@ const ProjectForm: React.FC = () => {
       title: '',
       description: '',
       difficulty: '',
-      tags: ''
+      programmingLanguages: '',
+      programmingSkills: ''
     };
     
     let isValid = true;
@@ -105,8 +181,13 @@ const ProjectForm: React.FC = () => {
       isValid = false;
     }
     
-    if (formData.tags.length === 0) {
-      newErrors.tags = 'Add at least one tag';
+    if (formData.programmingLanguages.length === 0) {
+      newErrors.programmingLanguages = 'Add at least one programming language';
+      isValid = false;
+    }
+
+    if (formData.programmingSkills.length === 0) {
+      newErrors.programmingSkills = 'Add at least one programming skill';
       isValid = false;
     }
     
@@ -123,7 +204,8 @@ const ProjectForm: React.FC = () => {
       title: formData.title,
       description: formData.description,
       difficulty: formData.difficulty as 'beginner' | 'intermediate' | 'advanced',
-      tags: formData.tags,
+      programmingLanguages: formData.programmingLanguages,
+      programmingSkills: formData.programmingSkills,
       estimatedTime: formData.estimatedTime || undefined,
       createdBy: currentUser
     });
@@ -179,20 +261,21 @@ const ProjectForm: React.FC = () => {
         />
       </div>
       
+      {/* Programming Languages */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Tags
+          Programming Languages
           <span className="text-red-500 ml-1">*</span>
         </label>
         
-        <div className="flex">
+        <div className="flex mb-2">
           <Input
-            id="currentTag"
-            name="currentTag"
-            placeholder="Add a tag (e.g., react, web, api)"
-            value={formData.currentTag}
+            id="currentLanguage"
+            name="currentLanguage"
+            placeholder="Add a programming language (e.g., JavaScript, Python)"
+            value={formData.currentLanguage}
             onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
+            onKeyDown={handleLanguageKeyDown}
             error=""
             className="mb-0 flex-grow"
           />
@@ -200,30 +283,129 @@ const ProjectForm: React.FC = () => {
           <Button
             type="button"
             variant="outline"
-            onClick={handleAddTag}
+            onClick={handleAddLanguage}
             className="ml-2"
             icon={<PlusCircleIcon size={18} />}
           >
             Add
           </Button>
         </div>
+
+        {/* Quick add popular languages */}
+        <div className="mb-3">
+          <p className="text-xs text-gray-500 mb-2">Popular languages:</p>
+          <div className="flex flex-wrap gap-1">
+            {commonLanguages.slice(0, 8).map((language) => (
+              <button
+                key={language}
+                type="button"
+                onClick={() => handleQuickAddLanguage(language)}
+                className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                  formData.programmingLanguages.includes(language)
+                    ? 'bg-indigo-100 text-indigo-800 cursor-not-allowed'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+                disabled={formData.programmingLanguages.includes(language)}
+              >
+                {language}
+              </button>
+            ))}
+          </div>
+        </div>
         
-        {errors.tags && (
-          <p className="mt-1 text-sm text-red-600">{errors.tags}</p>
+        {errors.programmingLanguages && (
+          <p className="mt-1 text-sm text-red-600">{errors.programmingLanguages}</p>
         )}
         
-        {formData.tags.length > 0 && (
+        {formData.programmingLanguages.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-3">
-            {formData.tags.map((tag) => (
+            {formData.programmingLanguages.map((language) => (
               <div 
-                key={tag} 
-                className="bg-gray-100 text-gray-800 px-3 py-1.5 rounded-md text-sm font-medium flex items-center"
+                key={language} 
+                className="bg-indigo-100 text-indigo-800 px-3 py-1.5 rounded-md text-sm font-medium flex items-center"
               >
-                {tag}
+                {language}
                 <button
                   type="button"
-                  onClick={() => handleRemoveTag(tag)}
-                  className="ml-1.5 text-gray-500 hover:text-gray-700"
+                  onClick={() => handleRemoveLanguage(language)}
+                  className="ml-1.5 text-indigo-600 hover:text-indigo-800"
+                >
+                  <XCircleIcon size={16} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Programming Skills */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Programming Skills & Technologies
+          <span className="text-red-500 ml-1">*</span>
+        </label>
+        
+        <div className="flex mb-2">
+          <Input
+            id="currentSkill"
+            name="currentSkill"
+            placeholder="Add a skill or technology (e.g., React, Docker, Machine Learning)"
+            value={formData.currentSkill}
+            onChange={handleInputChange}
+            onKeyDown={handleSkillKeyDown}
+            error=""
+            className="mb-0 flex-grow"
+          />
+          
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleAddSkill}
+            className="ml-2"
+            icon={<PlusCircleIcon size={18} />}
+          >
+            Add
+          </Button>
+        </div>
+
+        {/* Quick add popular skills */}
+        <div className="mb-3">
+          <p className="text-xs text-gray-500 mb-2">Popular skills:</p>
+          <div className="flex flex-wrap gap-1">
+            {commonSkills.slice(0, 10).map((skill) => (
+              <button
+                key={skill}
+                type="button"
+                onClick={() => handleQuickAddSkill(skill)}
+                className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                  formData.programmingSkills.includes(skill)
+                    ? 'bg-emerald-100 text-emerald-800 cursor-not-allowed'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+                disabled={formData.programmingSkills.includes(skill)}
+              >
+                {skill}
+              </button>
+            ))}
+          </div>
+        </div>
+        
+        {errors.programmingSkills && (
+          <p className="mt-1 text-sm text-red-600">{errors.programmingSkills}</p>
+        )}
+        
+        {formData.programmingSkills.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {formData.programmingSkills.map((skill) => (
+              <div 
+                key={skill} 
+                className="bg-emerald-100 text-emerald-800 px-3 py-1.5 rounded-md text-sm font-medium flex items-center"
+              >
+                {skill}
+                <button
+                  type="button"
+                  onClick={() => handleRemoveSkill(skill)}
+                  className="ml-1.5 text-emerald-600 hover:text-emerald-800"
                 >
                   <XCircleIcon size={16} />
                 </button>
