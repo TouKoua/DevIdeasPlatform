@@ -210,7 +210,7 @@ const ProjectForm: React.FC = () => {
       createdBy: currentUser
     });
     
-    navigate('/');
+    navigate('/explore');
   };
   
   return (
