@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ProjectIdea, User, Notification, ContributionRequest } from '../types';
-import { generateMockProjects, generateMockUsers } from '../utils/mockData';
+import { generateMockUsers } from '../utils/mockData';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -13,6 +13,7 @@ interface ProjectContextType {
   users: User[];
   notifications: Notification[];
   contributionRequests: ContributionRequest[];
+  loading: boolean;
   addProject: (project: Omit<ProjectIdea, 'id' | 'createdAt' | 'upvotes' | 'createdBy'>) => Promise<void>;
   updateProject: (id: string, updates: Partial<Pick<ProjectIdea, 'title' | 'description' | 'difficulty' | 'programmingLanguages' | 'programmingSkills' | 'estimatedTime'>>) => Promise<void>;
   upvoteProject: (id: string) => void;
@@ -31,6 +32,7 @@ interface ProjectContextType {
   logout: () => Promise<void>;
   markNotificationAsRead: (id: number) => void;
   markAllNotificationsAsRead: () => void;
+  refreshProjects: () => Promise<void>;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -48,6 +50,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [users, setUsers] = useState<User[]>([]);
   const [contributionRequests, setContributionRequests] = useState<ContributionRequest[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState<Notification[]>([
     {
       id: 1,
@@ -77,59 +80,151 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   ]);
 
-  useEffect(() => {
-    const session = supabase.auth.getSession();
-    if (session) {
-      setCurrentUser({
-        id: 'user1',
-        name: 'Sarah Chen',
-        avatar: 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
-        bio: 'Full-stack developer passionate about creating innovative web applications. Love working with React, Node.js, and exploring new technologies.',
-        location: 'San Francisco, CA',
-        joinedDate: new Date('2023-01-15'),
-        website: 'https://sarahchen.dev',
-        github: 'sarahchen',
-        twitter: 'sarahchen_dev',
-        savedProjects: [],
-        postedProjects: []
-      });
-    }
+  // Fetch projects from Supabase
+  const fetchProjects = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch projects with creator profiles and tags
+      const { data: projectsData, error: projectsError } = await supabase
+        .from('projects')
+        .select(`
+          *,
+          profiles!projects_created_by_fkey (
+            id,
+            name,
+            avatar_url
+          ),
+          project_tags (
+            tag
+          )
+        `)
+        .order('created_at', { ascending: false });
 
-    const mockUsers = generateMockUsers();
-    setUsers(mockUsers);
-    setProjects(generateMockProjects());
-    
-    // Generate some mock contribution requests
-    setContributionRequests([
-      {
-        id: 'req-1',
-        projectId: 'project-1',
-        requesterId: 'user3',
-        message: 'I have experience with React and weather APIs. Would love to contribute to this project!',
-        status: 'pending',
-        createdAt: new Date('2023-11-15'),
-        updatedAt: new Date('2023-11-15')
-      },
-      {
-        id: 'req-2',
-        projectId: 'project-1',
-        requesterId: 'user4',
-        message: 'This looks like a great project. I can help with the backend API integration.',
-        status: 'pending',
-        createdAt: new Date('2023-11-14'),
-        updatedAt: new Date('2023-11-14')
-      },
-      {
-        id: 'req-3',
-        projectId: 'project-2',
-        requesterId: 'user1',
-        message: 'I love CLI tools and have built several in Python. Happy to collaborate!',
-        status: 'accepted',
-        createdAt: new Date('2023-11-10'),
-        updatedAt: new Date('2023-11-12'),
-        responseMessage: 'Great! I\'d love to have your help. Let me know your GitHub username and I\'ll add you as a collaborator.'
+      if (projectsError) {
+        console.error('Error fetching projects:', projectsError);
+        return;
       }
-    ]);
+
+      // Transform the data to match our ProjectIdea interface
+      const transformedProjects: ProjectIdea[] = projectsData.map((project: any) => {
+        // Separate tags into programming languages and skills
+        const allTags = project.project_tags?.map((pt: any) => pt.tag) || [];
+        
+        // Common programming languages for filtering
+        const commonLanguages = [
+          'JavaScript', 'TypeScript', 'Python', 'Java', 'C++', 'C#', 'Go', 'Rust',
+          'PHP', 'Ruby', 'Swift', 'Kotlin', 'Dart', 'Scala', 'R', 'MATLAB',
+          'HTML', 'CSS', 'SQL', 'Shell', 'PowerShell', 'Lua', 'Perl', 'Haskell'
+        ];
+        
+        const programmingLanguages = allTags.filter((tag: string) => 
+          commonLanguages.includes(tag)
+        );
+        
+        const programmingSkills = allTags.filter((tag: string) => 
+          !commonLanguages.includes(tag)
+        );
+
+        return {
+          id: project.id,
+          title: project.title,
+          description: project.description,
+          difficulty: project.difficulty as 'beginner' | 'intermediate' | 'advanced',
+          programmingLanguages,
+          programmingSkills,
+          estimatedTime: project.estimated_time,
+          createdAt: new Date(project.created_at),
+          updatedAt: project.updated_at ? new Date(project.updated_at) : undefined,
+          createdBy: {
+            id: project.profiles.id,
+            name: project.profiles.name,
+            avatar: project.profiles.avatar_url || 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256'
+          },
+          upvotes: 0, // TODO: Implement upvotes system
+          upvoted: false, // TODO: Check if current user has upvoted
+          saved: false // TODO: Check if current user has saved
+        };
+      });
+
+      setProjects(transformedProjects);
+    } catch (error) {
+      console.error('Error in fetchProjects:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Refresh projects function
+  const refreshProjects = async () => {
+    await fetchProjects();
+  };
+
+  useEffect(() => {
+    const initializeData = async () => {
+      // Check for existing session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        // Fetch user profile
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (!profileError && profile) {
+          setCurrentUser({
+            id: profile.id,
+            name: profile.name,
+            avatar: profile.avatar_url || 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
+            savedProjects: [],
+            postedProjects: []
+          });
+        }
+      }
+
+      // Initialize mock users (for demo purposes)
+      const mockUsers = generateMockUsers();
+      setUsers(mockUsers);
+      
+      // Fetch projects from Supabase
+      await fetchProjects();
+      
+      // Generate some mock contribution requests
+      setContributionRequests([
+        {
+          id: 'req-1',
+          projectId: 'project-1',
+          requesterId: 'user3',
+          message: 'I have experience with React and weather APIs. Would love to contribute to this project!',
+          status: 'pending',
+          createdAt: new Date('2023-11-15'),
+          updatedAt: new Date('2023-11-15')
+        },
+        {
+          id: 'req-2',
+          projectId: 'project-1',
+          requesterId: 'user4',
+          message: 'This looks like a great project. I can help with the backend API integration.',
+          status: 'pending',
+          createdAt: new Date('2023-11-14'),
+          updatedAt: new Date('2023-11-14')
+        },
+        {
+          id: 'req-3',
+          projectId: 'project-2',
+          requesterId: 'user1',
+          message: 'I love CLI tools and have built several in Python. Happy to collaborate!',
+          status: 'accepted',
+          createdAt: new Date('2023-11-10'),
+          updatedAt: new Date('2023-11-12'),
+          responseMessage: 'Great! I\'d love to have your help. Let me know your GitHub username and I\'ll add you as a collaborator.'
+        }
+      ]);
+    };
+
+    initializeData();
   }, []);
 
   const markNotificationAsRead = (id: number) => {
@@ -173,6 +268,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         savedProjects: [],
         postedProjects: []
       });
+
+      // Refresh projects after login to get user-specific data
+      await fetchProjects();
     } catch (error) {
       throw error;
     }
@@ -201,6 +299,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         savedProjects: [],
         postedProjects: []
       });
+
+      // Refresh projects after signup
+      await fetchProjects();
     } catch (error) {
       throw error;
     }
@@ -209,6 +310,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const logout = async () => {
     await supabase.auth.signOut();
     setCurrentUser(null);
+    // Refresh projects after logout to remove user-specific data
+    await fetchProjects();
   };
 
   const addProject = async (projectData: Omit<ProjectIdea, 'id' | 'createdAt' | 'upvotes' | 'createdBy'>) => {
@@ -261,28 +364,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
       }
 
-      // Create the new project object for local state
-      const newProject: ProjectIdea = {
-        id: newProjectId,
-        title: projectData.title,
-        description: projectData.description,
-        difficulty: projectData.difficulty,
-        programmingLanguages: projectData.programmingLanguages,
-        programmingSkills: projectData.programmingSkills,
-        estimatedTime: projectData.estimatedTime,
-        createdAt: new Date(projectInsertData.created_at),
-        createdBy: {
-          id: currentUser.id,
-          name: currentUser.name,
-          avatar: currentUser.avatar
-        },
-        upvotes: 0,
-        upvoted: false,
-        saved: false
-      };
-
-      // Update local state
-      setProjects(prev => [newProject, ...prev]);
+      // Refresh projects to get the latest data from the database
+      await fetchProjects();
 
     } catch (error) {
       console.error('Error in addProject:', error);
@@ -291,13 +374,70 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const updateProject = async (id: string, updates: Partial<Pick<ProjectIdea, 'title' | 'description' | 'difficulty' | 'programmingLanguages' | 'programmingSkills' | 'estimatedTime'>>) => {
-    setProjects(prev => 
-      prev.map(project => 
-        project.id === id 
-          ? { ...project, ...updates, updatedAt: new Date() }
-          : project
-      )
-    );
+    if (!currentUser) {
+      throw new Error('Must be logged in to update a project');
+    }
+
+    try {
+      // Update the main project
+      const { error: projectError } = await supabase
+        .from('projects')
+        .update({
+          title: updates.title,
+          description: updates.description,
+          difficulty: updates.difficulty,
+          estimated_time: updates.estimatedTime || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .eq('created_by', currentUser.id); // Ensure user can only update their own projects
+
+      if (projectError) {
+        console.error('Error updating project:', projectError);
+        throw new Error('Failed to update project');
+      }
+
+      // Update tags if provided
+      if (updates.programmingLanguages || updates.programmingSkills) {
+        // Delete existing tags
+        const { error: deleteError } = await supabase
+          .from('project_tags')
+          .delete()
+          .eq('project_id', id);
+
+        if (deleteError) {
+          console.error('Error deleting old tags:', deleteError);
+        }
+
+        // Insert new tags
+        const allTags = [
+          ...(updates.programmingLanguages || []),
+          ...(updates.programmingSkills || [])
+        ];
+
+        if (allTags.length > 0) {
+          const tagInserts = allTags.map(tag => ({
+            project_id: id,
+            tag: tag
+          }));
+
+          const { error: tagsError } = await supabase
+            .from('project_tags')
+            .insert(tagInserts);
+
+          if (tagsError) {
+            console.error('Error inserting updated tags:', tagsError);
+          }
+        }
+      }
+
+      // Refresh projects to get the latest data
+      await fetchProjects();
+
+    } catch (error) {
+      console.error('Error in updateProject:', error);
+      throw error;
+    }
   };
 
   const upvoteProject = (id: string) => {
@@ -425,6 +565,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         users,
         notifications,
         contributionRequests,
+        loading,
         addProject,
         updateProject,
         upvoteProject, 
@@ -442,7 +583,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         signup,
         logout,
         markNotificationAsRead,
-        markAllNotificationsAsRead
+        markAllNotificationsAsRead,
+        refreshProjects
       }}
     >
       {children}
