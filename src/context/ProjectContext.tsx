@@ -379,15 +379,14 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     try {
-      // Update the main project
+      // Update the main project - remove the manual updated_at setting since the trigger will handle it
       const { error: projectError } = await supabase
         .from('projects')
         .update({
           title: updates.title,
           description: updates.description,
           difficulty: updates.difficulty,
-          estimated_time: updates.estimatedTime || null,
-          updated_at: new Date().toISOString()
+          estimated_time: updates.estimatedTime || null
         })
         .eq('id', id)
         .eq('created_by', currentUser.id); // Ensure user can only update their own projects
