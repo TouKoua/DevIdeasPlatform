@@ -13,7 +13,7 @@ interface ProjectContextType {
   users: User[];
   notifications: Notification[];
   contributionRequests: ContributionRequest[];
-  addProject: (project: Omit<ProjectIdea, 'id' | 'createdAt' | 'upvotes'>) => void;
+  addProject: (project: Omit<ProjectIdea, 'id' | 'createdAt' | 'upvotes' | 'createdBy'>) => Promise<void>;
   updateProject: (id: string, updates: Partial<Pick<ProjectIdea, 'title' | 'description' | 'difficulty' | 'programmingLanguages' | 'programmingSkills' | 'estimatedTime'>>) => Promise<void>;
   upvoteProject: (id: string) => void;
   saveProject: (id: string) => void;
@@ -211,15 +211,83 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setCurrentUser(null);
   };
 
-  const addProject = (projectData: Omit<ProjectIdea, 'id' | 'createdAt' | 'upvotes'>) => {
-    const newProject: ProjectIdea = {
-      ...projectData,
-      id: `project-${Date.now()}`,
-      createdAt: new Date(),
-      upvotes: 0,
-    };
-    
-    setProjects(prev => [newProject, ...prev]);
+  const addProject = async (projectData: Omit<ProjectIdea, 'id' | 'createdAt' | 'upvotes' | 'createdBy'>) => {
+    if (!currentUser) {
+      throw new Error('Must be logged in to create a project');
+    }
+
+    try {
+      // Insert the main project into the projects table
+      const { data: projectInsertData, error: projectError } = await supabase
+        .from('projects')
+        .insert({
+          title: projectData.title,
+          description: projectData.description,
+          difficulty: projectData.difficulty,
+          estimated_time: projectData.estimatedTime || null,
+          created_by: currentUser.id
+        })
+        .select()
+        .single();
+
+      if (projectError) {
+        console.error('Error inserting project:', projectError);
+        throw new Error('Failed to create project');
+      }
+
+      const newProjectId = projectInsertData.id;
+
+      // Combine programming languages and skills into tags
+      const allTags = [
+        ...projectData.programmingLanguages,
+        ...projectData.programmingSkills
+      ];
+
+      // Insert tags into project_tags table
+      if (allTags.length > 0) {
+        const tagInserts = allTags.map(tag => ({
+          project_id: newProjectId,
+          tag: tag
+        }));
+
+        const { error: tagsError } = await supabase
+          .from('project_tags')
+          .insert(tagInserts);
+
+        if (tagsError) {
+          console.error('Error inserting project tags:', tagsError);
+          // Note: We don't throw here as the project was created successfully
+          // The tags can be added later if needed
+        }
+      }
+
+      // Create the new project object for local state
+      const newProject: ProjectIdea = {
+        id: newProjectId,
+        title: projectData.title,
+        description: projectData.description,
+        difficulty: projectData.difficulty,
+        programmingLanguages: projectData.programmingLanguages,
+        programmingSkills: projectData.programmingSkills,
+        estimatedTime: projectData.estimatedTime,
+        createdAt: new Date(projectInsertData.created_at),
+        createdBy: {
+          id: currentUser.id,
+          name: currentUser.name,
+          avatar: currentUser.avatar
+        },
+        upvotes: 0,
+        upvoted: false,
+        saved: false
+      };
+
+      // Update local state
+      setProjects(prev => [newProject, ...prev]);
+
+    } catch (error) {
+      console.error('Error in addProject:', error);
+      throw error;
+    }
   };
 
   const updateProject = async (id: string, updates: Partial<Pick<ProjectIdea, 'title' | 'description' | 'difficulty' | 'programmingLanguages' | 'programmingSkills' | 'estimatedTime'>>) => {
