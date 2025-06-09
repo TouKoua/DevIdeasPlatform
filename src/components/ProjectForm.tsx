@@ -55,6 +55,9 @@ const ProjectForm: React.FC = () => {
     programmingLanguages: '',
     programmingSkills: ''
   });
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -195,26 +198,41 @@ const ProjectForm: React.FC = () => {
     return isValid;
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) return;
     
-    addProject({
-      title: formData.title,
-      description: formData.description,
-      difficulty: formData.difficulty as 'beginner' | 'intermediate' | 'advanced',
-      programmingLanguages: formData.programmingLanguages,
-      programmingSkills: formData.programmingSkills,
-      estimatedTime: formData.estimatedTime || undefined,
-      createdBy: currentUser
-    });
+    setIsLoading(true);
+    setSubmitError('');
     
-    navigate('/');
+    try {
+      await addProject({
+        title: formData.title,
+        description: formData.description,
+        difficulty: formData.difficulty as 'beginner' | 'intermediate' | 'advanced',
+        programmingLanguages: formData.programmingLanguages,
+        programmingSkills: formData.programmingSkills,
+        estimatedTime: formData.estimatedTime || undefined,
+      });
+      
+      navigate('/explore');
+    } catch (error) {
+      console.error('Error creating project:', error);
+      setSubmitError('Failed to create project. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {submitError && (
+        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md">
+          {submitError}
+        </div>
+      )}
+
       <Input
         id="title"
         name="title"
@@ -224,6 +242,7 @@ const ProjectForm: React.FC = () => {
         onChange={handleInputChange}
         error={errors.title}
         required
+        disabled={isLoading}
       />
       
       <Textarea
@@ -236,6 +255,7 @@ const ProjectForm: React.FC = () => {
         error={errors.description}
         required
         rows={6}
+        disabled={isLoading}
       />
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -249,6 +269,7 @@ const ProjectForm: React.FC = () => {
           placeholder="Select difficulty"
           error={errors.difficulty}
           required
+          disabled={isLoading}
         />
         
         <Input
@@ -258,6 +279,7 @@ const ProjectForm: React.FC = () => {
           placeholder="e.g., 2-3 weeks"
           value={formData.estimatedTime}
           onChange={handleInputChange}
+          disabled={isLoading}
         />
       </div>
       
@@ -278,6 +300,7 @@ const ProjectForm: React.FC = () => {
             onKeyDown={handleLanguageKeyDown}
             error=""
             className="mb-0 flex-grow"
+            disabled={isLoading}
           />
           
           <Button
@@ -286,6 +309,7 @@ const ProjectForm: React.FC = () => {
             onClick={handleAddLanguage}
             className="ml-2"
             icon={<PlusCircleIcon size={18} />}
+            disabled={isLoading}
           >
             Add
           </Button>
@@ -305,7 +329,7 @@ const ProjectForm: React.FC = () => {
                     ? 'bg-indigo-100 text-indigo-800 cursor-not-allowed'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
-                disabled={formData.programmingLanguages.includes(language)}
+                disabled={formData.programmingLanguages.includes(language) || isLoading}
               >
                 {language}
               </button>
@@ -329,6 +353,7 @@ const ProjectForm: React.FC = () => {
                   type="button"
                   onClick={() => handleRemoveLanguage(language)}
                   className="ml-1.5 text-indigo-600 hover:text-indigo-800"
+                  disabled={isLoading}
                 >
                   <XCircleIcon size={16} />
                 </button>
@@ -355,6 +380,7 @@ const ProjectForm: React.FC = () => {
             onKeyDown={handleSkillKeyDown}
             error=""
             className="mb-0 flex-grow"
+            disabled={isLoading}
           />
           
           <Button
@@ -363,6 +389,7 @@ const ProjectForm: React.FC = () => {
             onClick={handleAddSkill}
             className="ml-2"
             icon={<PlusCircleIcon size={18} />}
+            disabled={isLoading}
           >
             Add
           </Button>
@@ -382,7 +409,7 @@ const ProjectForm: React.FC = () => {
                     ? 'bg-emerald-100 text-emerald-800 cursor-not-allowed'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
-                disabled={formData.programmingSkills.includes(skill)}
+                disabled={formData.programmingSkills.includes(skill) || isLoading}
               >
                 {skill}
               </button>
@@ -406,6 +433,7 @@ const ProjectForm: React.FC = () => {
                   type="button"
                   onClick={() => handleRemoveSkill(skill)}
                   className="ml-1.5 text-emerald-600 hover:text-emerald-800"
+                  disabled={isLoading}
                 >
                   <XCircleIcon size={16} />
                 </button>
@@ -420,6 +448,7 @@ const ProjectForm: React.FC = () => {
           type="button"
           variant="outline"
           onClick={() => navigate('/')}
+          disabled={isLoading}
         >
           Cancel
         </Button>
@@ -427,8 +456,9 @@ const ProjectForm: React.FC = () => {
         <Button
           type="submit"
           variant="primary"
+          disabled={isLoading}
         >
-          Submit Project Idea
+          {isLoading ? 'Creating Project...' : 'Submit Project Idea'}
         </Button>
       </div>
     </form>
