@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ProjectProvider } from './context/ProjectContext';
 import Header from './components/Header';
 import HomePage from './pages/HomePage';
+import ExplorePage from './pages/ExplorePage';
 import SearchPage from './pages/SearchPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import NewProjectPage from './pages/NewProjectPage';
@@ -28,6 +29,7 @@ function App() {
           <main>
             <Routes>
               <Route path="/" element={<HomePage />} />
+              <Route path="/explore" element={<ExplorePage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignupPage />} />
               <Route path="/search" element={<SearchPage />} />

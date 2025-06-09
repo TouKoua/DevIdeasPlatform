@@ -115,13 +115,10 @@ const Header: React.FC = () => {
             
             <nav className="hidden md:ml-8 md:flex md:space-x-6">
               <Link to="/" className="text-gray-700 hover:text-indigo-600 px-3 py-2 text-sm font-medium">
+                Home
+              </Link>
+              <Link to="/explore" className="text-gray-700 hover:text-indigo-600 px-3 py-2 text-sm font-medium">
                 Explore
-              </Link>
-              <Link to="/trending" className="text-gray-700 hover:text-indigo-600 px-3 py-2 text-sm font-medium">
-                Trending
-              </Link>
-              <Link to="/categories" className="text-gray-700 hover:text-indigo-600 px-3 py-2 text-sm font-medium">
-                Categories
               </Link>
             </nav>
           </div>
@@ -325,21 +322,14 @@ const Header: React.FC = () => {
               className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
               onClick={() => setIsMenuOpen(false)}
             >
+              Home
+            </Link>
+            <Link 
+              to="/explore" 
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
+              onClick={() => setIsMenuOpen(false)}
+            >
               Explore
-            </Link>
-            <Link 
-              to="/trending" 
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Trending
-            </Link>
-            <Link 
-              to="/categories" 
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Categories
             </Link>
             <Link 
               to="/search" 
