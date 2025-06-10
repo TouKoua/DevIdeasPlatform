@@ -16,6 +16,7 @@ interface ProjectContextType {
   loading: boolean;
   addProject: (project: Omit<ProjectIdea, 'id' | 'createdAt' | 'upvotes' | 'createdBy'>) => Promise<void>;
   updateProject: (id: string, updates: Partial<Pick<ProjectIdea, 'title' | 'description' | 'difficulty' | 'programmingLanguages' | 'programmingSkills' | 'estimatedTime'>>) => Promise<void>;
+  updateUserProfile: (updates: Partial<Pick<User, 'name' | 'bio' | 'location' | 'website' | 'github' | 'twitter' | 'avatar'>>) => Promise<void>;
   upvoteProject: (id: string) => void;
   saveProject: (id: string) => void;
   searchProjects: (query: string, filters: any) => ProjectIdea[];
@@ -178,6 +179,12 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
             id: profile.id,
             name: profile.name,
             avatar: profile.avatar_url || 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
+            bio: profile.bio,
+            location: profile.location,
+            website: profile.website,
+            github: profile.github,
+            twitter: profile.twitter,
+            joinedDate: new Date(profile.created_at),
             savedProjects: [],
             postedProjects: []
           });
@@ -265,6 +272,12 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         id: profile.id,
         name: profile.name,
         avatar: profile.avatar_url || 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
+        bio: profile.bio,
+        location: profile.location,
+        website: profile.website,
+        github: profile.github,
+        twitter: profile.twitter,
+        joinedDate: new Date(profile.created_at),
         savedProjects: [],
         postedProjects: []
       });
@@ -296,6 +309,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         id: authData.user.id,
         name: authData.user.user_metadata.name,
         avatar: 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
+        joinedDate: new Date(),
         savedProjects: [],
         postedProjects: []
       });
@@ -312,6 +326,52 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setCurrentUser(null);
     // Refresh projects after logout to remove user-specific data
     await fetchProjects();
+  };
+
+  const updateUserProfile = async (updates: Partial<Pick<User, 'name' | 'bio' | 'location' | 'website' | 'github' | 'twitter' | 'avatar'>>) => {
+    if (!currentUser) {
+      throw new Error('Must be logged in to update profile');
+    }
+
+    try {
+      // Update the profile in Supabase
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          name: updates.name,
+          bio: updates.bio,
+          location: updates.location,
+          website: updates.website,
+          github: updates.github,
+          twitter: updates.twitter,
+          avatar_url: updates.avatar
+        })
+        .eq('id', currentUser.id);
+
+      if (error) {
+        console.error('Error updating profile:', error);
+        throw new Error('Failed to update profile');
+      }
+
+      // Update the current user state
+      setCurrentUser(prev => prev ? {
+        ...prev,
+        name: updates.name || prev.name,
+        bio: updates.bio || prev.bio,
+        location: updates.location || prev.location,
+        website: updates.website || prev.website,
+        github: updates.github || prev.github,
+        twitter: updates.twitter || prev.twitter,
+        avatar: updates.avatar || prev.avatar
+      } : null);
+
+      // Refresh projects to update the creator information
+      await fetchProjects();
+
+    } catch (error) {
+      console.error('Error in updateUserProfile:', error);
+      throw error;
+    }
   };
 
   const addProject = async (projectData: Omit<ProjectIdea, 'id' | 'createdAt' | 'upvotes' | 'createdBy'>) => {
@@ -567,6 +627,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         loading,
         addProject,
         updateProject,
+        updateUserProfile,
         upvoteProject, 
         saveProject,
         searchProjects,
