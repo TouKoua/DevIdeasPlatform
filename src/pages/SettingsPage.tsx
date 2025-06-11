@@ -151,8 +151,10 @@ const SettingsPage: React.FC = () => {
       
       setSaveMessage('Profile updated successfully!');
       
-      // Clear success message after 3 seconds
-      setTimeout(() => setSaveMessage(''), 3000);
+      // Redirect to profile page after a short delay to show the success message
+      setTimeout(() => {
+        navigate('/profile');
+      }, 1500);
     } catch (error) {
       console.error('Error updating profile:', error);
       setSaveError('Failed to update profile. Please try again.');

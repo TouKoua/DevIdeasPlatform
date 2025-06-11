@@ -125,6 +125,19 @@ const ContributionRequestsPage: React.FC = () => {
     });
   };
 
+  // Function to get the correct profile link for requesters
+  const getRequesterProfileLink = (requesterId: string) => {
+    if (!currentUser) {
+      return `/public-profile/${requesterId}`;
+    }
+    
+    if (currentUser.id === requesterId) {
+      return '/profile'; // Own profile (unlikely in this context)
+    }
+    
+    return `/public-profile/${requesterId}`; // Other user's public profile
+  };
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <button 
@@ -181,7 +194,7 @@ const ContributionRequestsPage: React.FC = () => {
               <div key={request.id} className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center">
-                    <Link to={`/user/${request.requester?.id}`}>
+                    <Link to={getRequesterProfileLink(request.requester?.id || '')}>
                       <img
                         src={request.requester?.avatar}
                         alt={request.requester?.name}
@@ -190,7 +203,7 @@ const ContributionRequestsPage: React.FC = () => {
                     </Link>
                     <div>
                       <Link 
-                        to={`/user/${request.requester?.id}`}
+                        to={getRequesterProfileLink(request.requester?.id || '')}
                         className="font-medium text-gray-900 hover:text-indigo-600 transition-colors"
                       >
                         {request.requester?.name}
@@ -268,7 +281,7 @@ const ContributionRequestsPage: React.FC = () => {
               <div key={request.id} className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center">
-                    <Link to={`/user/${request.requester?.id}`}>
+                    <Link to={getRequesterProfileLink(request.requester?.id || '')}>
                       <img
                         src={request.requester?.avatar}
                         alt={request.requester?.name}
@@ -277,7 +290,7 @@ const ContributionRequestsPage: React.FC = () => {
                     </Link>
                     <div>
                       <Link 
-                        to={`/user/${request.requester?.id}`}
+                        to={getRequesterProfileLink(request.requester?.id || '')}
                         className="font-medium text-gray-900 hover:text-indigo-600 transition-colors"
                       >
                         {request.requester?.name}

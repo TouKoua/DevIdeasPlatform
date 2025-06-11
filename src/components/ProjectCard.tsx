@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ProjectIdea } from '../types';
 import Badge from './ui/Badge';
-import { BookmarkIcon, ThumbsUpIcon, ClockIcon, CodeIcon, CpuIcon } from 'lucide-react';
+import { BookmarkIcon, EyeIcon, ClockIcon, CodeIcon, CpuIcon, UsersIcon } from 'lucide-react';
 import { useProjects } from '../context/ProjectContext';
 
 interface ProjectCardProps {
@@ -23,7 +23,7 @@ const getDifficultyColor = (difficulty: string): string => {
 };
 
 const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
-  const { upvoteProject, saveProject, currentUser } = useProjects();
+  const { saveProject, currentUser } = useProjects();
   
   // Use updatedAt if available, otherwise use createdAt
   const displayDate = project.updatedAt || project.createdAt;
@@ -47,6 +47,28 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
     e.preventDefault();
     e.stopPropagation();
   };
+
+  // Determine the correct profile link
+  const getProfileLink = () => {
+    if (!currentUser) {
+      return `/public-profile/${project.createdBy.id}`;
+    }
+    
+    if (currentUser.id === project.createdBy.id) {
+      return '/profile'; // Own profile
+    }
+    
+    return `/public-profile/${project.createdBy.id}`; // Other user's public profile
+  };
+
+  // Check if contributor limit is reached
+  const isContributorLimitReached = project.maxContributors && project.currentContributors 
+    ? project.currentContributors >= project.maxContributors 
+    : false;
+
+  // Check if we should show contributor info (only if project creator allows it or if it's the creator viewing)
+  const shouldShowContributorInfo = project.showContributorCount !== false || 
+    (currentUser && currentUser.id === project.createdBy.id);
   
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 transition-all duration-200 hover:shadow-lg hover:translate-y-[-2px]">
@@ -63,6 +85,11 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
             {isUpdated && (
               <Badge variant="primary" size="sm">
                 Updated
+              </Badge>
+            )}
+            {isContributorLimitReached && shouldShowContributorInfo && (
+              <Badge variant="danger" size="sm">
+                Full
               </Badge>
             )}
           </div>
@@ -110,17 +137,34 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
           </div>
         </div>
         
-        {project.estimatedTime && (
-          <div className="flex items-center text-gray-500 text-sm mb-4">
-            <ClockIcon size={16} className="mr-1" />
-            <span>Est. time: {project.estimatedTime}</span>
-          </div>
-        )}
+        {/* Project Info */}
+        <div className="space-y-2 mb-4">
+          {project.estimatedTime && (
+            <div className="flex items-center text-gray-500 text-sm">
+              <ClockIcon size={16} className="mr-1" />
+              <span>Est. time: {project.estimatedTime}</span>
+            </div>
+          )}
+          
+          {project.maxContributors && shouldShowContributorInfo && (
+            <div className="flex items-center text-gray-500 text-sm">
+              <UsersIcon size={16} className="mr-1" />
+              <span>
+                Looking for {project.maxContributors === 0 ? 'unlimited' : project.maxContributors} contributor{project.maxContributors !== 1 ? 's' : ''}
+                {project.currentContributors !== undefined && project.maxContributors > 0 && (
+                  <span className="ml-1">
+                    ({project.currentContributors}/{project.maxContributors} joined)
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
+        </div>
         
         <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
           <div className="flex items-center">
             <Link 
-              to={`/user/${project.createdBy.id}`}
+              to={getProfileLink()}
               onClick={handleUserClick}
               className="flex items-center hover:opacity-80 transition-opacity"
             >
@@ -140,20 +184,10 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
           </div>
           
           <div className="flex space-x-2">
-            <button 
-              className={`flex items-center transition-colors ${
-                project.upvoted ? 'text-indigo-600' : 'text-gray-500 hover:text-indigo-600'
-              } ${!currentUser && 'opacity-50 cursor-not-allowed'}`}
-              onClick={(e) => handleButtonClick(e, () => upvoteProject(project.id))}
-              title={currentUser ? undefined : "Sign in to upvote projects"}
-            >
-              <ThumbsUpIcon 
-                size={18} 
-                className="mr-1"
-                fill={project.upvoted ? "currentColor" : "none"}
-              />
-              <span>{project.upvotes}</span>
-            </button>
+            <div className="flex items-center text-gray-500">
+              <EyeIcon size={18} className="mr-1" />
+              <span>{project.views}</span>
+            </div>
             
             <button 
               className={`flex items-center transition-colors ${

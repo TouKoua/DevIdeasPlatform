@@ -102,13 +102,16 @@ const Header: React.FC = () => {
     }
   };
 
+  // Determine the logo destination based on user login status
+  const logoDestination = currentUser ? "/" : "/landing";
+
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo and main nav */}
           <div className="flex items-center">
-            <Link to="/" className="flex items-center">
+            <Link to={logoDestination} className="flex items-center">
               <CodeIcon size={28} className="text-indigo-600 mr-2" />
               <span className="text-xl font-bold text-gray-900">CodeIdeas</span>
             </Link>
@@ -117,8 +120,8 @@ const Header: React.FC = () => {
               <Link to="/" className="text-gray-700 hover:text-indigo-600 px-3 py-2 text-sm font-medium">
                 Home
               </Link>
-              <Link to="/explore" className="text-gray-700 hover:text-indigo-600 px-3 py-2 text-sm font-medium">
-                Explore
+              <Link to="/landing" className="text-gray-700 hover:text-indigo-600 px-3 py-2 text-sm font-medium">
+                About
               </Link>
             </nav>
           </div>
@@ -325,11 +328,11 @@ const Header: React.FC = () => {
               Home
             </Link>
             <Link 
-              to="/explore" 
+              to="/landing" 
               className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
               onClick={() => setIsMenuOpen(false)}
             >
-              Explore
+              About
             </Link>
             <Link 
               to="/search" 
