@@ -3,9 +3,10 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useProjects } from '../context/ProjectContext';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
+import Modal from '../components/ui/Modal';
 import Textarea from '../components/ui/Textarea';
 import ProjectCard from '../components/ProjectCard';
-import { ThumbsUpIcon, BookmarkIcon, ClockIcon, CodeIcon, CpuIcon, ArrowLeftIcon, UserIcon, EditIcon, MailIcon, UsersIcon, MessageSquareIcon, SendIcon } from 'lucide-react';
+import { ThumbsUpIcon, BookmarkIcon, ClockIcon, CodeIcon, CpuIcon, ArrowLeftIcon, UserIcon, EditIcon, MailIcon, UsersIcon, MessageSquareIcon, SendIcon, TrashIcon, AlertTriangleIcon } from 'lucide-react';
 
 const getDifficultyColor = (difficulty: string): string => {
   switch (difficulty) {
@@ -29,13 +30,16 @@ const ProjectDetailPage: React.FC = () => {
     saveProject, 
     currentUser,
     createContributionRequest,
-    getContributionRequestsForProject
+    getContributionRequestsForProject,
+    deleteProject
   } = useProjects();
   const navigate = useNavigate();
   const [isRequestingContribution, setIsRequestingContribution] = useState(false);
   const [contributionRequestSent, setContributionRequestSent] = useState(false);
   const [showContributionForm, setShowContributionForm] = useState(false);
   const [contributionMessage, setContributionMessage] = useState('');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const project = getProjectById(id || '');
   const contributionRequests = getContributionRequestsForProject(id || '');
@@ -112,6 +116,23 @@ const ProjectDetailPage: React.FC = () => {
     setShowContributionForm(false);
     setContributionMessage('');
   };
+
+  const handleDeleteProject = async () => {
+    if (!currentUser || !isOwner) return;
+
+    setIsDeleting(true);
+    
+    try {
+      await deleteProject(project.id);
+      setShowDeleteModal(false);
+      navigate('/profile'); // Redirect to profile after deletion
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      alert('Failed to delete project. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
   
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -152,6 +173,14 @@ const ProjectDetailPage: React.FC = () => {
                           Edit
                         </Button>
                       </Link>
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        icon={<TrashIcon size={16} />}
+                        onClick={() => setShowDeleteModal(true)}
+                      >
+                        Delete
+                      </Button>
                       {pendingRequests.length > 0 && (
                         <Link to={`/project/${project.id}/contributions`}>
                           <Button
@@ -411,6 +440,54 @@ const ProjectDetailPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title="Delete Project"
+        size="md"
+        footer={
+          <div className="flex space-x-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteModal(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              icon={<TrashIcon size={18} />}
+              onClick={handleDeleteProject}
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete Project'}
+            </Button>
+          </div>
+        }
+      >
+        <div className="flex items-start space-x-3">
+          <div className="flex-shrink-0">
+            <AlertTriangleIcon size={24} className="text-red-600" />
+          </div>
+          <div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              Are you sure you want to delete this project?
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              This action cannot be undone. This will permanently delete the project "{project.title}" 
+              and all associated data including contribution requests and comments.
+            </p>
+            <div className="bg-red-50 border border-red-200 rounded-md p-3">
+              <p className="text-sm text-red-800">
+                <strong>Warning:</strong> All data related to this project will be permanently removed 
+                from our servers.
+              </p>
+            </div>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

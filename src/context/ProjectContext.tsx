@@ -16,6 +16,7 @@ interface ProjectContextType {
   loading: boolean;
   addProject: (project: Omit<ProjectIdea, 'id' | 'createdAt' | 'upvotes' | 'createdBy'>) => Promise<void>;
   updateProject: (id: string, updates: Partial<Pick<ProjectIdea, 'title' | 'description' | 'difficulty' | 'programmingLanguages' | 'programmingSkills' | 'estimatedTime'>>) => Promise<void>;
+  deleteProject: (id: string) => Promise<void>;
   updateUserProfile: (updates: Partial<Pick<User, 'name' | 'bio' | 'location' | 'website' | 'github' | 'twitter' | 'avatar'>>) => Promise<void>;
   upvoteProject: (id: string) => void;
   saveProject: (id: string) => void;
@@ -499,6 +500,36 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  const deleteProject = async (id: string) => {
+    if (!currentUser) {
+      throw new Error('Must be logged in to delete a project');
+    }
+
+    try {
+      // Delete the project (this will cascade delete related records due to foreign key constraints)
+      const { error: deleteError } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', id)
+        .eq('created_by', currentUser.id); // Ensure user can only delete their own projects
+
+      if (deleteError) {
+        console.error('Error deleting project:', deleteError);
+        throw new Error('Failed to delete project');
+      }
+
+      // Remove the project from local state immediately for better UX
+      setProjects(prev => prev.filter(project => project.id !== id));
+
+      // Also remove any related contribution requests from local state
+      setContributionRequests(prev => prev.filter(request => request.projectId !== id));
+
+    } catch (error) {
+      console.error('Error in deleteProject:', error);
+      throw error;
+    }
+  };
+
   const upvoteProject = (id: string) => {
     setProjects(prev => 
       prev.map(project => 
@@ -627,6 +658,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         loading,
         addProject,
         updateProject,
+        deleteProject,
         updateUserProfile,
         upvoteProject, 
         saveProject,

@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
 import { useProjects } from '../context/ProjectContext';
 import ProjectCard from '../components/ProjectCard';
-import { Link } from 'react-router-dom';
-import { Settings, PlusSquareIcon, BookmarkIcon, RocketIcon, BellIcon } from 'lucide-react';
+import Modal from '../components/ui/Modal';
 import Button from '../components/ui/Button';
+import { Link } from 'react-router-dom';
+import { Settings, PlusSquareIcon, BookmarkIcon, RocketIcon, BellIcon, TrashIcon, AlertTriangleIcon } from 'lucide-react';
 
 const ProfilePage: React.FC = () => {
-  const { currentUser, projects, notifications, markNotificationAsRead, markAllNotificationsAsRead } = useProjects();
+  const { currentUser, projects, notifications, markNotificationAsRead, markAllNotificationsAsRead, deleteProject } = useProjects();
   const [activeTab, setActiveTab] = useState<'posted' | 'saved' | 'notifications'>('posted');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   if (!currentUser) {
     return (
@@ -23,6 +27,32 @@ const ProfilePage: React.FC = () => {
 
   const postedProjects = projects.filter(project => project.createdBy.id === currentUser.id);
   const savedProjects = projects.filter(project => project.saved);
+
+  const handleDeleteClick = (projectId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setProjectToDelete(projectId);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteProject = async () => {
+    if (!projectToDelete) return;
+
+    setIsDeleting(true);
+    
+    try {
+      await deleteProject(projectToDelete);
+      setShowDeleteModal(false);
+      setProjectToDelete(null);
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      alert('Failed to delete project. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const projectToDeleteData = projectToDelete ? projects.find(p => p.id === projectToDelete) : null;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -127,9 +157,24 @@ const ProfilePage: React.FC = () => {
               {postedProjects.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {postedProjects.map(project => (
-                    <Link to={`/project/${project.id}`} key={project.id}>
-                      <ProjectCard project={project} />
-                    </Link>
+                    <div key={project.id} className="relative group">
+                      <Link to={`/project/${project.id}`}>
+                        <ProjectCard project={project} />
+                      </Link>
+                      
+                      {/* Delete button overlay */}
+                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          icon={<TrashIcon size={16} />}
+                          onClick={(e) => handleDeleteClick(project.id, e)}
+                          title="Delete project"
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
                   ))}
                 </div>
               ) : (
@@ -222,6 +267,56 @@ const ProfilePage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title="Delete Project"
+        size="md"
+        footer={
+          <div className="flex space-x-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteModal(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              icon={<TrashIcon size={18} />}
+              onClick={handleDeleteProject}
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete Project'}
+            </Button>
+          </div>
+        }
+      >
+        {projectToDeleteData && (
+          <div className="flex items-start space-x-3">
+            <div className="flex-shrink-0">
+              <AlertTriangleIcon size={24} className="text-red-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Are you sure you want to delete this project?
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                This action cannot be undone. This will permanently delete the project "{projectToDeleteData.title}" 
+                and all associated data including contribution requests and comments.
+              </p>
+              <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                <p className="text-sm text-red-800">
+                  <strong>Warning:</strong> All data related to this project will be permanently removed 
+                  from our servers.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
