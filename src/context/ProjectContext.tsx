@@ -345,7 +345,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           website: updates.website,
           github: updates.github,
           twitter: updates.twitter,
-          avatar_url: updates.avatar
+          avatar_url: updates.avatar,
+          updated_at: updates.updated_at
         })
         .eq('id', currentUser.id);
 
