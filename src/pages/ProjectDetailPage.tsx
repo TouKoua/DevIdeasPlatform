@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useProjects } from '../context/ProjectContext';
 import Badge from '../components/ui/Badge';
@@ -6,7 +6,7 @@ import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import Textarea from '../components/ui/Textarea';
 import ProjectCard from '../components/ProjectCard';
-import { ThumbsUpIcon, BookmarkIcon, ClockIcon, CodeIcon, CpuIcon, ArrowLeftIcon, UserIcon, EditIcon, MailIcon, UsersIcon, MessageSquareIcon, SendIcon, TrashIcon, AlertTriangleIcon } from 'lucide-react';
+import { EyeIcon, BookmarkIcon, ClockIcon, CodeIcon, CpuIcon, ArrowLeftIcon, UserIcon, EditIcon, MailIcon, UsersIcon, MessageSquareIcon, SendIcon, TrashIcon, AlertTriangleIcon } from 'lucide-react';
 
 const getDifficultyColor = (difficulty: string): string => {
   switch (difficulty) {
@@ -26,7 +26,7 @@ const ProjectDetailPage: React.FC = () => {
   const { 
     getProjectById, 
     projects, 
-    upvoteProject, 
+    incrementProjectViews, 
     saveProject, 
     currentUser,
     createContributionRequest,
@@ -43,6 +43,13 @@ const ProjectDetailPage: React.FC = () => {
   
   const project = getProjectById(id || '');
   const contributionRequests = getContributionRequestsForProject(id || '');
+  
+  // Increment views when project is loaded
+  useEffect(() => {
+    if (project) {
+      incrementProjectViews(project.id);
+    }
+  }, [project?.id, incrementProjectViews]);
   
   if (!project) {
     return (
@@ -83,11 +90,33 @@ const ProjectDetailPage: React.FC = () => {
 
   const isOwner = currentUser && currentUser.id === project.createdBy.id;
   const pendingRequests = contributionRequests.filter(req => req.status === 'pending');
+  const acceptedRequests = contributionRequests.filter(req => req.status === 'accepted');
   
   // Check if current user has already requested to contribute
   const hasRequestedContribution = currentUser && contributionRequests.some(
     req => req.requesterId === currentUser.id
   );
+
+  // Check if contributor limit is reached
+  const isContributorLimitReached = project.maxContributors && project.maxContributors > 0
+    ? acceptedRequests.length >= project.maxContributors
+    : false;
+
+  // Check if we should show contributor info (only if project creator allows it or if it's the creator viewing)
+  const shouldShowContributorInfo = project.showContributorCount !== false || isOwner;
+
+  // Determine the correct profile link for the project creator
+  const getCreatorProfileLink = () => {
+    if (!currentUser) {
+      return `/public-profile/${project.createdBy.id}`;
+    }
+    
+    if (currentUser.id === project.createdBy.id) {
+      return '/profile'; // Own profile
+    }
+    
+    return `/public-profile/${project.createdBy.id}`; // Other user's public profile
+  };
 
   const handleRequestContribution = async () => {
     if (!currentUser || showContributionForm) return;
@@ -162,6 +191,11 @@ const ProjectDetailPage: React.FC = () => {
                       Updated
                     </Badge>
                   )}
+                  {isContributorLimitReached && shouldShowContributorInfo && (
+                    <Badge variant="danger" size="lg">
+                      Full
+                    </Badge>
+                  )}
                   {isOwner && (
                     <div className="flex gap-2">
                       <Link to={`/project/${project.id}/edit`}>
@@ -202,7 +236,7 @@ const ProjectDetailPage: React.FC = () => {
                 <span>
                   {isUpdated ? 'Updated' : 'Posted'} by{' '}
                   <Link 
-                    to={`/user/${project.createdBy.id}`}
+                    to={getCreatorProfileLink()}
                     className="text-indigo-600 hover:text-indigo-800 font-medium transition-colors"
                   >
                     {project.createdBy.name}
@@ -224,12 +258,32 @@ const ProjectDetailPage: React.FC = () => {
                 <p className="text-gray-700 whitespace-pre-line">{project.description}</p>
               </div>
               
-              {project.estimatedTime && (
-                <div className="flex items-center text-gray-700 mb-6">
-                  <ClockIcon size={18} className="mr-2" />
-                  <span>Estimated time to complete: <strong>{project.estimatedTime}</strong></span>
-                </div>
-              )}
+              {/* Project Info */}
+              <div className="space-y-3 mb-6">
+                {project.estimatedTime && (
+                  <div className="flex items-center text-gray-700">
+                    <ClockIcon size={18} className="mr-2" />
+                    <span>Estimated time to complete: <strong>{project.estimatedTime}</strong></span>
+                  </div>
+                )}
+
+                {project.maxContributors !== undefined && shouldShowContributorInfo && (
+                  <div className="flex items-center text-gray-700">
+                    <UsersIcon size={18} className="mr-2" />
+                    <span>
+                      Looking for{' '}
+                      <strong>
+                        {project.maxContributors === 0 ? 'unlimited contributors' : `${project.maxContributors} contributor${project.maxContributors !== 1 ? 's' : ''}`}
+                      </strong>
+                      {project.maxContributors > 0 && (
+                        <span className="ml-2 text-gray-600">
+                          ({acceptedRequests.length}/{project.maxContributors} joined)
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                )}
+              </div>
               
               {/* Programming Languages */}
               <div className="mb-4">
@@ -270,15 +324,10 @@ const ProjectDetailPage: React.FC = () => {
               </div>
               
               <div className="flex items-center space-x-4 border-t border-gray-100 pt-6">
-                <Button
-                  variant={project.upvoted ? 'primary' : 'outline'}
-                  icon={<ThumbsUpIcon size={18} fill={project.upvoted ? "currentColor" : "none"} />}
-                  onClick={() => upvoteProject(project.id)}
-                  disabled={!currentUser}
-                  title={currentUser ? undefined : "Sign in to upvote projects"}
-                >
-                  Upvote ({project.upvotes})
-                </Button>
+                <div className="flex items-center text-gray-600">
+                  <EyeIcon size={18} className="mr-2" />
+                  <span>{project.views} views</span>
+                </div>
                 
                 <Button
                   variant={project.saved ? 'primary' : 'outline'}
@@ -291,7 +340,7 @@ const ProjectDetailPage: React.FC = () => {
                 </Button>
 
                 {/* Request Contribution Button */}
-                {currentUser && !isOwner && !hasRequestedContribution && (
+                {currentUser && !isOwner && !hasRequestedContribution && !isContributorLimitReached && (
                   <Button
                     variant="outline"
                     icon={<MailIcon size={18} />}
@@ -310,6 +359,17 @@ const ProjectDetailPage: React.FC = () => {
                     disabled
                   >
                     Request Sent
+                  </Button>
+                )}
+
+                {/* Show if contributor limit reached */}
+                {!isOwner && isContributorLimitReached && shouldShowContributorInfo && (
+                  <Button
+                    variant="outline"
+                    icon={<UsersIcon size={18} />}
+                    disabled
+                  >
+                    Contributors Full
                   </Button>
                 )}
               </div>
@@ -370,7 +430,7 @@ const ProjectDetailPage: React.FC = () => {
         <div className="lg:col-span-1">
           <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 mb-6">
             <div className="flex items-center mb-4">
-              <Link to={`/user/${project.createdBy.id}`}>
+              <Link to={getCreatorProfileLink()}>
                 <img 
                   src={project.createdBy.avatar} 
                   alt={project.createdBy.name}
@@ -379,7 +439,7 @@ const ProjectDetailPage: React.FC = () => {
               </Link>
               <div>
                 <Link 
-                  to={`/user/${project.createdBy.id}`}
+                  to={getCreatorProfileLink()}
                   className="font-medium text-gray-900 hover:text-indigo-600 transition-colors"
                 >
                   {project.createdBy.name}
@@ -387,7 +447,7 @@ const ProjectDetailPage: React.FC = () => {
                 <p className="text-gray-500 text-sm">Project Creator</p>
               </div>
             </div>
-            <Link to={`/user/${project.createdBy.id}`}>
+            <Link to={getCreatorProfileLink()}>
               <Button variant="outline" fullWidth>
                 View Profile
               </Button>

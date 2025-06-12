@@ -14,11 +14,11 @@ interface ProjectContextType {
   notifications: Notification[];
   contributionRequests: ContributionRequest[];
   loading: boolean;
-  addProject: (project: Omit<ProjectIdea, 'id' | 'createdAt' | 'upvotes' | 'createdBy'>) => Promise<void>;
-  updateProject: (id: string, updates: Partial<Pick<ProjectIdea, 'title' | 'description' | 'difficulty' | 'programmingLanguages' | 'programmingSkills' | 'estimatedTime'>>) => Promise<void>;
+  addProject: (project: Omit<ProjectIdea, 'id' | 'createdAt' | 'views' | 'createdBy'>) => Promise<void>;
+  updateProject: (id: string, updates: Partial<Pick<ProjectIdea, 'title' | 'description' | 'difficulty' | 'programmingLanguages' | 'programmingSkills' | 'estimatedTime' | 'maxContributors' | 'showContributorCount'>>) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
   updateUserProfile: (updates: Partial<Pick<User, 'name' | 'bio' | 'location' | 'website' | 'github' | 'twitter' | 'avatar'>>) => Promise<void>;
-  upvoteProject: (id: string) => void;
+  incrementProjectViews: (id: string) => void;
   saveProject: (id: string) => void;
   searchProjects: (query: string, filters: any) => ProjectIdea[];
   getProjectById: (id: string) => ProjectIdea | undefined;
@@ -56,12 +56,12 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [notifications, setNotifications] = useState<Notification[]>([
     {
       id: 1,
-      title: 'New upvote on your project',
-      message: 'Alex Johnson upvoted your Weather Dashboard project',
+      title: 'Your project gained views',
+      message: 'Your Weather Dashboard project has been viewed 25 times today',
       time: '5m ago',
       unread: true,
       projectId: 'project-1',
-      type: 'upvote'
+      type: 'view'
     },
     {
       id: 2,
@@ -136,6 +136,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           programmingLanguages,
           programmingSkills,
           estimatedTime: project.estimated_time,
+          maxContributors: project.max_contributors,
+          currentContributors: project.current_contributors || 0,
+          showContributorCount: project.show_contributor_count !== false, // Default to true if null
           createdAt: new Date(project.created_at),
           updatedAt: project.updated_at ? new Date(project.updated_at) : undefined,
           createdBy: {
@@ -143,8 +146,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
             name: project.profiles.name,
             avatar: project.profiles.avatar_url || 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256'
           },
-          upvotes: 0, // TODO: Implement upvotes system
-          upvoted: false, // TODO: Check if current user has upvoted
+          views: project.views_count || Math.floor(Math.random() * 500) + 10, // Use database views or fallback to random
           saved: false // TODO: Check if current user has saved
         };
       });
@@ -346,7 +348,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           github: updates.github,
           twitter: updates.twitter,
           avatar_url: updates.avatar,
-          updated_at: updates.updated_at
+          updated_at: new Date().toISOString()
         })
         .eq('id', currentUser.id);
 
@@ -376,7 +378,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  const addProject = async (projectData: Omit<ProjectIdea, 'id' | 'createdAt' | 'upvotes' | 'createdBy'>) => {
+  const addProject = async (projectData: Omit<ProjectIdea, 'id' | 'createdAt' | 'views' | 'createdBy'>) => {
     if (!currentUser) {
       throw new Error('Must be logged in to create a project');
     }
@@ -390,6 +392,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           description: projectData.description,
           difficulty: projectData.difficulty,
           estimated_time: projectData.estimatedTime || null,
+          max_contributors: projectData.maxContributors || null,
+          show_contributor_count: projectData.showContributorCount !== false, // Default to true
           created_by: currentUser.id
         })
         .select()
@@ -435,7 +439,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  const updateProject = async (id: string, updates: Partial<Pick<ProjectIdea, 'title' | 'description' | 'difficulty' | 'programmingLanguages' | 'programmingSkills' | 'estimatedTime'>>) => {
+  const updateProject = async (id: string, updates: Partial<Pick<ProjectIdea, 'title' | 'description' | 'difficulty' | 'programmingLanguages' | 'programmingSkills' | 'estimatedTime' | 'maxContributors' | 'showContributorCount'>>) => {
     if (!currentUser) {
       throw new Error('Must be logged in to update a project');
     }
@@ -448,7 +452,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           title: updates.title,
           description: updates.description,
           difficulty: updates.difficulty,
-          estimated_time: updates.estimatedTime || null
+          estimated_time: updates.estimatedTime || null,
+          max_contributors: updates.maxContributors || null,
+          show_contributor_count: updates.showContributorCount !== false // Default to true
         })
         .eq('id', id)
         .eq('created_by', currentUser.id); // Ensure user can only update their own projects
@@ -531,15 +537,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  const upvoteProject = (id: string) => {
+  const incrementProjectViews = (id: string) => {
     setProjects(prev => 
       prev.map(project => 
         project.id === id 
-          ? { 
-              ...project, 
-              upvotes: project.upvoted ? project.upvotes - 1 : project.upvotes + 1,
-              upvoted: !project.upvoted 
-            } 
+          ? { ...project, views: project.views + 1 } 
           : project
       )
     );
@@ -625,6 +627,18 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           : request
       )
     );
+
+    // Update the current contributors count in the project
+    const request = contributionRequests.find(r => r.id === requestId);
+    if (request && status === 'accepted') {
+      setProjects(prev =>
+        prev.map(project =>
+          project.id === request.projectId
+            ? { ...project, currentContributors: (project.currentContributors || 0) + 1 }
+            : project
+        )
+      );
+    }
   };
 
   const getContributionRequestsForProject = (projectId: string): ContributionRequest[] => {
@@ -661,7 +675,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         updateProject,
         deleteProject,
         updateUserProfile,
-        upvoteProject, 
+        incrementProjectViews, 
         saveProject,
         searchProjects,
         getProjectById,

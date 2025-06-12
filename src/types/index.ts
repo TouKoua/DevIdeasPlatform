@@ -12,10 +12,12 @@ export interface ProjectIdea {
     name: string;
     avatar: string;
   };
-  upvotes: number;
-  upvoted?: boolean;
+  views: number;
   estimatedTime?: string;
   saved?: boolean;
+  maxContributors?: number;
+  currentContributors?: number;
+  showContributorCount?: boolean;
 }
 
 export interface User {
@@ -39,7 +41,7 @@ export interface Notification {
   time: string;
   unread: boolean;
   projectId?: string;
-  type: 'upvote' | 'recommendation' | 'welcome';
+  type: 'view' | 'recommendation' | 'welcome';
 }
 
 export interface ContributionRequest {

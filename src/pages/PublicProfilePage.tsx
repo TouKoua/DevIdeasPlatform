@@ -15,16 +15,13 @@ import {
   EyeIcon,
   ClockIcon,
   UserIcon,
-  BookmarkIcon,
-  BellIcon,
-  Settings,
   CodeIcon,
   CpuIcon
 } from 'lucide-react';
 
-const UserProfilePage: React.FC = () => {
+const PublicProfilePage: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
-  const { getUserById, getProjectsByUserId, currentUser, projects } = useProjects();
+  const { getUserById, getProjectsByUserId, currentUser } = useProjects();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'posted' | 'about'>('about');
 
@@ -50,11 +47,16 @@ const UserProfilePage: React.FC = () => {
 
   const isOwnProfile = currentUser && currentUser.id === user.id;
   const totalViews = userProjects.reduce((sum, project) => sum + project.views, 0);
-  const savedProjects = projects.filter(project => project.saved);
   const joinedDate = new Date(user.joinedDate).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long'
   });
+
+  // If this is the user's own profile, redirect to the private profile page
+  if (isOwnProfile) {
+    navigate('/profile');
+    return null;
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -92,17 +94,6 @@ const UserProfilePage: React.FC = () => {
               )}
             </div>
           </div>
-          {isOwnProfile && (
-            <Link to="/profile">
-              <Button
-                variant="outline"
-                size="sm"
-                icon={<Settings size={18} />}
-              >
-                Edit Profile
-              </Button>
-            </Link>
-          )}
         </div>
 
         {/* Social Links */}
@@ -145,22 +136,14 @@ const UserProfilePage: React.FC = () => {
         )}
 
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-6 mt-8">
+        <div className="grid grid-cols-2 gap-6 mt-8">
           <div className="text-center">
             <div className="text-2xl font-bold text-gray-900">{userProjects.length}</div>
             <div className="text-sm text-gray-500">Posted Projects</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-gray-900">{isOwnProfile ? savedProjects.length : 0}</div>
-            <div className="text-sm text-gray-500">Saved Projects</div>
-          </div>
-          <div className="text-center">
             <div className="text-2xl font-bold text-gray-900">{totalViews}</div>
             <div className="text-sm text-gray-500">Total Views</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-gray-900">0</div>
-            <div className="text-sm text-gray-500">Unread Notifications</div>
           </div>
         </div>
       </div>
@@ -210,21 +193,8 @@ const UserProfilePage: React.FC = () => {
                   <RocketIcon size={48} className="mx-auto text-gray-400 mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 mb-2">No projects yet</h3>
                   <p className="text-gray-500 mb-4">
-                    {isOwnProfile 
-                      ? "You haven't posted any project ideas yet." 
-                      : `${user.name} hasn't posted any project ideas yet.`
-                    }
+                    {user.name} hasn't posted any project ideas yet.
                   </p>
-                  {isOwnProfile && (
-                    <Link to="/new-project">
-                      <Button
-                        variant="primary"
-                        icon={<RocketIcon size={18} />}
-                      >
-                        Post New Idea
-                      </Button>
-                    </Link>
-                  )}
                 </div>
               )}
             </>
@@ -242,10 +212,7 @@ const UserProfilePage: React.FC = () => {
                   <UserIcon size={48} className="mx-auto text-gray-400 mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 mb-2">No bio yet</h3>
                   <p className="text-gray-500">
-                    {isOwnProfile 
-                      ? "Add a bio to tell others about yourself." 
-                      : `${user.name} hasn't added a bio yet.`
-                    }
+                    {user.name} hasn't added a bio yet.
                   </p>
                 </div>
               )}
@@ -356,4 +323,4 @@ const UserProfilePage: React.FC = () => {
   );
 };
 
-export default UserProfilePage;
+export default PublicProfilePage;

@@ -5,12 +5,22 @@ import Select from './ui/Select';
 import Button from './ui/Button';
 import { useProjects } from '../context/ProjectContext';
 import { useNavigate } from 'react-router-dom';
-import { XCircleIcon, PlusCircleIcon } from 'lucide-react';
+import { XCircleIcon, PlusCircleIcon, UsersIcon, EyeIcon, EyeOffIcon } from 'lucide-react';
 
 const difficultyOptions = [
   { value: 'beginner', label: 'Beginner' },
   { value: 'intermediate', label: 'Intermediate' },
   { value: 'advanced', label: 'Advanced' }
+];
+
+const contributorOptions = [
+  { value: '1', label: '1 contributor' },
+  { value: '2', label: '2 contributors' },
+  { value: '3', label: '3 contributors' },
+  { value: '4', label: '4 contributors' },
+  { value: '5', label: '5 contributors' },
+  { value: '10', label: '10 contributors' },
+  { value: '0', label: 'No limit' }
 ];
 
 // Common programming languages
@@ -42,6 +52,8 @@ const ProjectForm: React.FC = () => {
     description: '',
     difficulty: '',
     estimatedTime: '',
+    maxContributors: '',
+    showContributorCount: true,
     programmingLanguages: [] as string[],
     programmingSkills: [] as string[],
     currentLanguage: '',
@@ -67,6 +79,11 @@ const ProjectForm: React.FC = () => {
     if (errors[name as keyof typeof errors]) {
       setErrors({ ...errors, [name]: '' });
     }
+  };
+
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, checked } = e.target;
+    setFormData({ ...formData, [name]: checked });
   };
   
   const handleAddLanguage = () => {
@@ -214,9 +231,11 @@ const ProjectForm: React.FC = () => {
         programmingLanguages: formData.programmingLanguages,
         programmingSkills: formData.programmingSkills,
         estimatedTime: formData.estimatedTime || undefined,
+        maxContributors: formData.maxContributors ? parseInt(formData.maxContributors) : undefined,
+        showContributorCount: formData.showContributorCount,
       });
       
-      navigate('/explore');
+      navigate('/');
     } catch (error) {
       console.error('Error creating project:', error);
       setSubmitError('Failed to create project. Please try again.');
@@ -258,7 +277,7 @@ const ProjectForm: React.FC = () => {
         disabled={isLoading}
       />
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Select
           id="difficulty"
           name="difficulty"
@@ -275,13 +294,67 @@ const ProjectForm: React.FC = () => {
         <Input
           id="estimatedTime"
           name="estimatedTime"
-          label="Estimated Time to Complete (optional)"
+          label="Estimated Time (optional)"
           placeholder="e.g., 2-3 weeks"
           value={formData.estimatedTime}
           onChange={handleInputChange}
           disabled={isLoading}
         />
+
+        <Select
+          id="maxContributors"
+          name="maxContributors"
+          label="Max Contributors (optional)"
+          options={contributorOptions}
+          value={formData.maxContributors}
+          onChange={handleInputChange}
+          placeholder="Select limit"
+          disabled={isLoading}
+        />
       </div>
+
+      {/* Contributor Count Visibility Toggle */}
+      {formData.maxContributors && (
+        <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start">
+              <UsersIcon size={18} className="text-blue-600 mr-2 mt-0.5" />
+              <div>
+                <h4 className="text-sm font-medium text-blue-900">Contributor Settings</h4>
+                <p className="text-sm text-blue-700 mt-1">
+                  {formData.maxContributors === '0' 
+                    ? 'You\'ve set no limit on contributors. Anyone can request to contribute to this project.'
+                    : `You're looking for up to ${formData.maxContributors} contributor${parseInt(formData.maxContributors) > 1 ? 's' : ''} for this project. Once this limit is reached, new contribution requests will be disabled.`
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="mt-3 flex items-center">
+            <input
+              type="checkbox"
+              id="showContributorCount"
+              name="showContributorCount"
+              checked={formData.showContributorCount}
+              onChange={handleCheckboxChange}
+              disabled={isLoading}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <label htmlFor="showContributorCount" className="ml-2 text-sm text-blue-700 flex items-center">
+              {formData.showContributorCount ? (
+                <EyeIcon size={16} className="mr-1" />
+              ) : (
+                <EyeOffIcon size={16} className="mr-1" />
+              )}
+              {formData.showContributorCount 
+                ? 'Show contributor count to other users' 
+                : 'Hide contributor count from other users'
+              }
+            </label>
+          </div>
+        </div>
+      )}
       
       {/* Programming Languages */}
       <div>

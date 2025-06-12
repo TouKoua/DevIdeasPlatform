@@ -93,9 +93,9 @@ const ProfilePage: React.FC = () => {
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-gray-900">
-              {postedProjects.reduce((sum, project) => sum + project.upvotes, 0)}
+              {postedProjects.reduce((sum, project) => sum + project.views, 0)}
             </div>
-            <div className="text-sm text-gray-500">Total Upvotes</div>
+            <div className="text-sm text-gray-500">Total Views</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-gray-900">

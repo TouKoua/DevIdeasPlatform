@@ -190,7 +190,7 @@ export const generateMockProjects = (): ProjectIdea[] => {
         name: 'Alex Johnson',
         avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=256'
       },
-      upvotes: 42,
+      views: 142,
       estimatedTime: '2-3 weeks'
     },
     {
@@ -206,7 +206,7 @@ export const generateMockProjects = (): ProjectIdea[] => {
         name: 'Maria Garcia',
         avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=256'
       },
-      upvotes: 28,
+      views: 89,
       estimatedTime: '1-2 weeks'
     },
     {
@@ -222,7 +222,7 @@ export const generateMockProjects = (): ProjectIdea[] => {
         name: 'David Kim',
         avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=256'
       },
-      upvotes: 56,
+      views: 256,
       estimatedTime: '4-6 weeks'
     },
     {
@@ -238,7 +238,7 @@ export const generateMockProjects = (): ProjectIdea[] => {
         name: 'Emily Wilson',
         avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=256'
       },
-      upvotes: 35,
+      views: 178,
       estimatedTime: '3-4 weeks'
     },
     {
@@ -254,7 +254,7 @@ export const generateMockProjects = (): ProjectIdea[] => {
         name: 'James Smith',
         avatar: 'https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?auto=compress&cs=tinysrgb&w=256'
       },
-      upvotes: 31,
+      views: 95,
       estimatedTime: '1-2 weeks'
     },
     {
@@ -270,7 +270,7 @@ export const generateMockProjects = (): ProjectIdea[] => {
         name: 'Sophia Martinez',
         avatar: 'https://images.pexels.com/photos/1542085/pexels-photo-1542085.jpeg?auto=compress&cs=tinysrgb&w=256'
       },
-      upvotes: 48,
+      views: 203,
       estimatedTime: '3-4 weeks'
     },
     {
@@ -286,7 +286,7 @@ export const generateMockProjects = (): ProjectIdea[] => {
         name: 'Daniel Brown',
         avatar: 'https://images.pexels.com/photos/91227/pexels-photo-91227.jpeg?auto=compress&cs=tinysrgb&w=256'
       },
-      upvotes: 39,
+      views: 134,
       estimatedTime: '2-3 weeks'
     },
     {
@@ -302,7 +302,7 @@ export const generateMockProjects = (): ProjectIdea[] => {
         name: 'Olivia Taylor',
         avatar: 'https://images.pexels.com/photos/712513/pexels-photo-712513.jpeg?auto=compress&cs=tinysrgb&w=256'
       },
-      upvotes: 52,
+      views: 312,
       estimatedTime: '5-6 weeks'
     }
   ];
@@ -314,7 +314,7 @@ export const generateMockProjects = (): ProjectIdea[] => {
     const randomDifficulty = difficulties[Math.floor(Math.random() * difficulties.length)];
     const randomLanguages = getRandomItems(programmingLanguages, Math.floor(Math.random() * 3) + 1);
     const randomSkills = getRandomItems(programmingSkills, Math.floor(Math.random() * 4) + 2);
-    const randomUpvotes = Math.floor(Math.random() * 100);
+    const randomViews = Math.floor(Math.random() * 400) + 20;
     const randomDaysAgo = Math.floor(Math.random() * 60);
     
     const users = [
@@ -361,7 +361,7 @@ export const generateMockProjects = (): ProjectIdea[] => {
       programmingSkills: randomSkills,
       createdAt: new Date(Date.now() - randomDaysAgo * 24 * 60 * 60 * 1000),
       createdBy: randomUser,
-      upvotes: randomUpvotes,
+      views: randomViews,
       estimatedTime: `${Math.floor(Math.random() * 4) + 1}-${Math.floor(Math.random() * 4) + 2} weeks`
     };
   });
