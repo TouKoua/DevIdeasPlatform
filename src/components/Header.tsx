@@ -93,7 +93,7 @@ const Header: React.FC = () => {
     }
   };
 
-  const handleNotificationClick = (notification: Notification) => {
+  const handleNotificationClick = (notification: any) => {
     markNotificationAsRead(notification.id);
     setIsNotificationsOpen(false);
     

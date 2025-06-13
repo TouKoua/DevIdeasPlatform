@@ -18,7 +18,7 @@ interface ProjectContextType {
   updateProject: (id: string, updates: Partial<Pick<ProjectIdea, 'title' | 'description' | 'difficulty' | 'programmingLanguages' | 'programmingSkills' | 'estimatedTime' | 'maxContributors' | 'showContributorCount'>>) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
   updateUserProfile: (updates: Partial<Pick<User, 'name' | 'bio' | 'location' | 'website' | 'github' | 'twitter' | 'avatar'>>) => Promise<void>;
-  incrementProjectViews: (id: string) => void;
+  incrementProjectViews: (id: string) => Promise<void>;
   saveProject: (id: string) => void;
   searchProjects: (query: string, filters: any) => ProjectIdea[];
   getProjectById: (id: string) => ProjectIdea | undefined;
@@ -53,6 +53,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [contributionRequests, setContributionRequests] = useState<ContributionRequest[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [viewedProjects, setViewedProjects] = useState<Set<string>>(new Set());
   const [notifications, setNotifications] = useState<Notification[]>([
     {
       id: 1,
@@ -81,6 +82,24 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       type: 'welcome'
     }
   ]);
+
+  // Load viewed projects from localStorage on mount
+  useEffect(() => {
+    const storedViewedProjects = localStorage.getItem('viewedProjects');
+    if (storedViewedProjects) {
+      try {
+        const parsed = JSON.parse(storedViewedProjects);
+        setViewedProjects(new Set(parsed));
+      } catch (error) {
+        console.error('Error parsing viewed projects from localStorage:', error);
+      }
+    }
+  }, []);
+
+  // Save viewed projects to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('viewedProjects', JSON.stringify(Array.from(viewedProjects)));
+  }, [viewedProjects]);
 
   // Fetch projects from Supabase
   const fetchProjects = async () => {
@@ -327,6 +346,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const logout = async () => {
     await supabase.auth.signOut();
     setCurrentUser(null);
+    // Clear viewed projects on logout
+    setViewedProjects(new Set());
+    localStorage.removeItem('viewedProjects');
     // Refresh projects after logout to remove user-specific data
     await fetchProjects();
   };
@@ -537,14 +559,50 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  const incrementProjectViews = (id: string) => {
-    setProjects(prev => 
-      prev.map(project => 
-        project.id === id 
-          ? { ...project, views: project.views + 1 } 
-          : project
-      )
-    );
+  const incrementProjectViews = async (id: string) => {
+    // Check if this project has already been viewed by this user/session
+    if (viewedProjects.has(id)) {
+      return; // Don't increment if already viewed
+    }
+
+    // Mark this project as viewed locally immediately to prevent repeated API calls
+    setViewedProjects(prev => new Set([...prev, id]));
+
+    try {
+      // Track the view in Supabase
+      const { error } = await supabase
+        .from('project_views')
+        .insert({
+          project_id: id,
+          user_id: currentUser?.id || null,
+          ip_address: currentUser ? null : 'anonymous' // Simple IP tracking for anonymous users
+        });
+
+      if (error) {
+        if (error.code === '23505') {
+          // Duplicate key error - view already exists in database, this is expected
+          // Don't log as error and don't increment local count
+          return;
+        } else {
+          // Other Supabase errors should be logged
+          console.error('Error tracking project view:', error);
+          return;
+        }
+      }
+
+      // Only increment local view count if the insert was successful (no error)
+      setProjects(prev => 
+        prev.map(project => 
+          project.id === id 
+            ? { ...project, views: project.views + 1 } 
+            : project
+        )
+      );
+
+    } catch (error) {
+      // Log unexpected client-side errors
+      console.error('Error in incrementProjectViews:', error);
+    }
   };
 
   const saveProject = (id: string) => {

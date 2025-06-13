@@ -18,6 +18,8 @@ import {
 const ProjectsSidebar: React.FC = () => {
   const { currentUser, projects } = useProjects();
   const [isExpanded, setIsExpanded] = useState(true);
+  const [isRecentProjectsOpen, setIsRecentProjectsOpen] = useState(false);
+  const [isSavedProjectsOpen, setIsSavedProjectsOpen] = useState(false);
 
   if (!currentUser) return null;
 
@@ -109,13 +111,21 @@ const ProjectsSidebar: React.FC = () => {
               </Link>
             </div>
 
-            {/* Recent Projects */}
+            {/* Recent Projects - Dropdown */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-medium text-gray-700 flex items-center">
+                <button
+                  onClick={() => setIsRecentProjectsOpen(!isRecentProjectsOpen)}
+                  className="flex items-center text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+                >
                   <RocketIcon size={16} className="mr-1 text-gray-500" />
                   Recent Projects
-                </h3>
+                  {isRecentProjectsOpen ? (
+                    <ChevronDownIcon size={14} className="ml-1 text-gray-500" />
+                  ) : (
+                    <ChevronRightIcon size={14} className="ml-1 text-gray-500" />
+                  )}
+                </button>
                 {userProjects.length > 5 && (
                   <Link to="/profile" className="text-xs text-indigo-600 hover:text-indigo-800">
                     View all
@@ -123,71 +133,83 @@ const ProjectsSidebar: React.FC = () => {
                 )}
               </div>
               
-              {sortedUserProjects.length > 0 ? (
-                <div className="space-y-2">
-                  {sortedUserProjects.map((project) => (
-                    <div key={project.id} className="group">
-                      <Link 
-                        to={`/project/${project.id}`}
-                        className="block p-3 rounded-lg border border-gray-100 hover:border-indigo-200 hover:bg-indigo-50 transition-all duration-200"
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <h4 className="text-sm font-medium text-gray-900 line-clamp-1 group-hover:text-indigo-600">
-                            {project.title}
-                          </h4>
-                          <Badge 
-                            variant={getDifficultyColor(project.difficulty)} 
-                            size="sm"
+              {isRecentProjectsOpen && (
+                <>
+                  {sortedUserProjects.length > 0 ? (
+                    <div className="space-y-2">
+                      {sortedUserProjects.map((project) => (
+                        <div key={project.id} className="group">
+                          <Link 
+                            to={`/project/${project.id}`}
+                            className="block p-3 rounded-lg border border-gray-100 hover:border-indigo-200 hover:bg-indigo-50 transition-all duration-200"
                           >
-                            {project.difficulty.charAt(0).toUpperCase()}
-                          </Badge>
+                            <div className="flex items-start justify-between mb-2">
+                              <h4 className="text-sm font-medium text-gray-900 line-clamp-1 group-hover:text-indigo-600">
+                                {project.title}
+                              </h4>
+                              <Badge 
+                                variant={getDifficultyColor(project.difficulty)} 
+                                size="sm"
+                              >
+                                {project.difficulty.charAt(0).toUpperCase()}
+                              </Badge>
+                            </div>
+                            
+                            <p className="text-xs text-gray-600 line-clamp-2 mb-2">
+                              {project.description}
+                            </p>
+                            
+                            <div className="flex items-center justify-between text-xs text-gray-500">
+                              <div className="flex items-center">
+                                <ClockIcon size={12} className="mr-1" />
+                                {formatDate(project.createdAt)}
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <span className="flex items-center">
+                                  <EyeIcon size={12} className="mr-1" />
+                                  {project.views}
+                                </span>
+                                <Link 
+                                  to={`/project/${project.id}/edit`}
+                                  className="p-1 rounded hover:bg-indigo-100 transition-colors"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <EditIcon size={12} className="text-gray-400 hover:text-indigo-600" />
+                                </Link>
+                              </div>
+                            </div>
+                          </Link>
                         </div>
-                        
-                        <p className="text-xs text-gray-600 line-clamp-2 mb-2">
-                          {project.description}
-                        </p>
-                        
-                        <div className="flex items-center justify-between text-xs text-gray-500">
-                          <div className="flex items-center">
-                            <ClockIcon size={12} className="mr-1" />
-                            {formatDate(project.createdAt)}
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <span className="flex items-center">
-                              <EyeIcon size={12} className="mr-1" />
-                              {project.views}
-                            </span>
-                            <Link 
-                              to={`/project/${project.id}/edit`}
-                              className="p-1 rounded hover:bg-indigo-100 transition-colors"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <EditIcon size={12} className="text-gray-400 hover:text-indigo-600" />
-                            </Link>
-                          </div>
-                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 text-gray-500">
+                      <RocketIcon size={32} className="mx-auto mb-2 text-gray-300" />
+                      <p className="text-xs">No projects yet</p>
+                      <Link to="/new-project" className="text-xs text-indigo-600 hover:text-indigo-800">
+                        Create your first project
                       </Link>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-6 text-gray-500">
-                  <RocketIcon size={32} className="mx-auto mb-2 text-gray-300" />
-                  <p className="text-xs">No projects yet</p>
-                  <Link to="/new-project" className="text-xs text-indigo-600 hover:text-indigo-800">
-                    Create your first project
-                  </Link>
-                </div>
+                  )}
+                </>
               )}
             </div>
 
-            {/* Saved Projects */}
+            {/* Saved Projects - Dropdown */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-medium text-gray-700 flex items-center">
+                <button
+                  onClick={() => setIsSavedProjectsOpen(!isSavedProjectsOpen)}
+                  className="flex items-center text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+                >
                   <BookmarkIcon size={16} className="mr-1 text-gray-500" />
                   Saved Projects
-                </h3>
+                  {isSavedProjectsOpen ? (
+                    <ChevronDownIcon size={14} className="ml-1 text-gray-500" />
+                  ) : (
+                    <ChevronRightIcon size={14} className="ml-1 text-gray-500" />
+                  )}
+                </button>
                 {savedProjects.length > 3 && (
                   <Link to="/profile" className="text-xs text-indigo-600 hover:text-indigo-800">
                     View all
@@ -195,45 +217,49 @@ const ProjectsSidebar: React.FC = () => {
                 )}
               </div>
               
-              {sortedSavedProjects.length > 0 ? (
-                <div className="space-y-2">
-                  {sortedSavedProjects.map((project) => (
-                    <div key={project.id} className="group">
-                      <Link 
-                        to={`/project/${project.id}`}
-                        className="block p-3 rounded-lg border border-gray-100 hover:border-emerald-200 hover:bg-emerald-50 transition-all duration-200"
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <h4 className="text-sm font-medium text-gray-900 line-clamp-1 group-hover:text-emerald-600">
-                            {project.title}
-                          </h4>
-                          <Badge 
-                            variant={getDifficultyColor(project.difficulty)} 
-                            size="sm"
+              {isSavedProjectsOpen && (
+                <>
+                  {sortedSavedProjects.length > 0 ? (
+                    <div className="space-y-2">
+                      {sortedSavedProjects.map((project) => (
+                        <div key={project.id} className="group">
+                          <Link 
+                            to={`/project/${project.id}`}
+                            className="block p-3 rounded-lg border border-gray-100 hover:border-emerald-200 hover:bg-emerald-50 transition-all duration-200"
                           >
-                            {project.difficulty.charAt(0).toUpperCase()}
-                          </Badge>
+                            <div className="flex items-start justify-between mb-2">
+                              <h4 className="text-sm font-medium text-gray-900 line-clamp-1 group-hover:text-emerald-600">
+                                {project.title}
+                              </h4>
+                              <Badge 
+                                variant={getDifficultyColor(project.difficulty)} 
+                                size="sm"
+                              >
+                                {project.difficulty.charAt(0).toUpperCase()}
+                              </Badge>
+                            </div>
+                            
+                            <div className="flex items-center justify-between text-xs text-gray-500">
+                              <span className="text-gray-600">by {project.createdBy.name}</span>
+                              <div className="flex items-center">
+                                <EyeIcon size={12} className="mr-1" />
+                                {project.views}
+                              </div>
+                            </div>
+                          </Link>
                         </div>
-                        
-                        <div className="flex items-center justify-between text-xs text-gray-500">
-                          <span className="text-gray-600">by {project.createdBy.name}</span>
-                          <div className="flex items-center">
-                            <EyeIcon size={12} className="mr-1" />
-                            {project.views}
-                          </div>
-                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 text-gray-500">
+                      <BookmarkIcon size={32} className="mx-auto mb-2 text-gray-300" />
+                      <p className="text-xs">No saved projects</p>
+                      <Link to="/" className="text-xs text-indigo-600 hover:text-indigo-800">
+                        Explore projects
                       </Link>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-6 text-gray-500">
-                  <BookmarkIcon size={32} className="mx-auto mb-2 text-gray-300" />
-                  <p className="text-xs">No saved projects</p>
-                  <Link to="/" className="text-xs text-indigo-600 hover:text-indigo-800">
-                    Explore projects
-                  </Link>
-                </div>
+                  )}
+                </>
               )}
             </div>
 
