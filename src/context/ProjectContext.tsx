@@ -574,8 +574,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .from('project_views')
         .insert({
           project_id: id,
-          user_id: currentUser?.id || null,
-          ip_address: currentUser ? null : 'anonymous' // Simple IP tracking for anonymous users
+          user_id: currentUser?.id || null
         });
 
       if (error) {
