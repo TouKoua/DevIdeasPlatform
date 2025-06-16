@@ -31,8 +31,7 @@ ALTER TABLE project_views ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Authenticated users can track their views" ON project_views
   FOR INSERT WITH CHECK (
-    (auth.uid() IS NOT NULL AND user_id = auth.uid()) OR
-    (auth.uid() IS NULL AND ip_address IS NOT NULL)
+    (auth.uid() IS NOT NULL AND user_id = auth.uid())
   );
 
 -- Add UPDATE policy for upsert operations
