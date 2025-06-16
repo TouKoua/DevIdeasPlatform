@@ -23,7 +23,6 @@ CREATE TABLE IF NOT EXISTS project_views (
   ip_address text,
   created_at timestamptz DEFAULT now(),
   UNIQUE(project_id, user_id),
-  UNIQUE(project_id, ip_address)
 );
 
 -- Enable Row Level Security
