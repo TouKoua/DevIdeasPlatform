@@ -50,12 +50,12 @@ function App() {
     <ProjectProvider>
       <Router>
         <Routes>
-          <Route path="/" element={
+          <Route path="/home" element={
             <AppLayout>
               <HomePage />
             </AppLayout>
           } />
-          <Route path="/landing" element={
+          <Route path="/" element={
             <AppLayout>
               <LandingPage />
             </AppLayout>
