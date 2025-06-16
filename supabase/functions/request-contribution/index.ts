@@ -158,7 +158,7 @@ This email was sent automatically from CodeIdeas. If you have any questions, ple
           subject: emailSubject
         }],
         from: { 
-          email: 'noreply@codeideas.com', 
+          email: 'em1115@codeideas.com', 
           name: 'CodeIdeas Platform' 
         },
         reply_to: {
