@@ -44,7 +44,6 @@ CREATE POLICY "Users can update their own view records" ON project_views
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_project_views_project_id ON project_views(project_id);
 CREATE INDEX IF NOT EXISTS idx_project_views_user_id ON project_views(user_id);
-CREATE INDEX IF NOT EXISTS idx_project_views_ip_address ON project_views(ip_address);
 
 -- Add views count column to projects table if it doesn't exist
 DO $$
