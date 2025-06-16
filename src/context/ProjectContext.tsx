@@ -560,6 +560,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const incrementProjectViews = async (id: string) => {
+    if(currentUser == null){
+      return;
+    }
     // Check if this project has already been viewed by this user/session
     if (viewedProjects.has(id)) {
       return; // Don't increment if already viewed
