@@ -29,10 +29,6 @@ CREATE TABLE IF NOT EXISTS project_views (
 -- Enable Row Level Security
 ALTER TABLE project_views ENABLE ROW LEVEL SECURITY;
 
--- Create policies
-CREATE POLICY "Anyone can view project views" ON project_views
-  FOR SELECT USING (true);
-
 CREATE POLICY "Authenticated users can track their views" ON project_views
   FOR INSERT WITH CHECK (
     (auth.uid() IS NOT NULL AND user_id = auth.uid()) OR
