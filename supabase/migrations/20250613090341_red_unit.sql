@@ -20,7 +20,6 @@ CREATE TABLE IF NOT EXISTS project_views (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id uuid REFERENCES projects(id) ON DELETE CASCADE NOT NULL,
   user_id uuid REFERENCES profiles(id) ON DELETE CASCADE,
-  ip_address text,
   created_at timestamptz DEFAULT now(),
   UNIQUE(project_id, user_id),
 );
