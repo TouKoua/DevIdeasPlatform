@@ -40,9 +40,27 @@ const ProjectDetailPage: React.FC = () => {
   const [contributionMessage, setContributionMessage] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [similarProjects, setSimilarProjects] = useState<any[]>([]);
   
   const project = getProjectById(id || '');
   const contributionRequests = getContributionRequestsForProject(id || '');
+  
+  // Calculate similar projects only once when the project loads or changes
+  useEffect(() => {
+    if (project) {
+      const similar = projects
+        .filter(p => 
+          p.id !== project.id && (
+            p.programmingLanguages.some(lang => project.programmingLanguages.includes(lang)) ||
+            p.programmingSkills.some(skill => project.programmingSkills.includes(skill))
+          )
+        )
+        .sort(() => 0.5 - Math.random()) // Shuffle
+        .slice(0, 3);
+      
+      setSimilarProjects(similar);
+    }
+  }, [project?.id]); // Only depend on project.id, not the entire projects array
   
   // Increment views when project is loaded
   useEffect(() => {
@@ -66,17 +84,6 @@ const ProjectDetailPage: React.FC = () => {
       </div>
     );
   }
-  
-  // Get similar projects by programming languages and skills
-  const similarProjects = projects
-    .filter(p => 
-      p.id !== project.id && (
-        p.programmingLanguages.some(lang => project.programmingLanguages.includes(lang)) ||
-        p.programmingSkills.some(skill => project.programmingSkills.includes(skill))
-      )
-    )
-    .sort(() => 0.5 - Math.random()) // Shuffle
-    .slice(0, 3);
   
   // Use updatedAt if available, otherwise use createdAt
   const displayDate = project.updatedAt || project.createdAt;
