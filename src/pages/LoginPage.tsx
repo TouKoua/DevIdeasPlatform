@@ -20,7 +20,7 @@ const LoginPage: React.FC = () => {
 
     try {
       await login(formData.email, formData.password);
-      navigate('/');
+      navigate('/home');
     } catch (err) {
       setError('Invalid email or password');
     }
