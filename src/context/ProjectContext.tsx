@@ -666,17 +666,51 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const createContributionRequest = async (projectId: string, message?: string) => {
     if (!currentUser) throw new Error('Must be logged in to create contribution request');
     
-    const newRequest: ContributionRequest = {
-      id: `req-${Date.now()}`,
-      projectId,
-      requesterId: currentUser.id,
-      message,
-      status: 'pending',
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
-    setContributionRequests(prev => [newRequest, ...prev]);
+    const project = getProjectById(projectId);
+    if (!project) throw new Error('Project not found');
+
+    try {
+      // Call the Edge Function to send email notification
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/request-contribution`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          projectId: project.id,
+          projectTitle: project.title,
+          projectCreatorEmail: `${project.createdBy.name.toLowerCase().replace(' ', '.')}@example.com`, // Mock email
+          projectCreatorName: project.createdBy.name,
+          requesterName: currentUser.name,
+          requesterEmail: `${currentUser.name.toLowerCase().replace(' ', '.')}@example.com`, // Mock email
+          projectUrl: `${window.location.origin}/project/${project.id}`,
+          message: message
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send contribution request');
+      }
+
+      // Add to local state for immediate UI feedback
+      const newRequest: ContributionRequest = {
+        id: `req-${Date.now()}`,
+        projectId,
+        requesterId: currentUser.id,
+        message,
+        status: 'pending',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      setContributionRequests(prev => [newRequest, ...prev]);
+
+    } catch (error) {
+      console.error('Error creating contribution request:', error);
+      throw error;
+    }
   };
 
   const updateContributionRequestStatus = async (requestId: string, status: 'accepted' | 'declined', responseMessage?: string) => {
