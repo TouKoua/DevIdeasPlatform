@@ -38,8 +38,7 @@ CREATE POLICY "Authenticated users can track their views" ON project_views
 -- Add UPDATE policy for upsert operations
 CREATE POLICY "Users can update their own view records" ON project_views
   FOR UPDATE USING (
-    (auth.uid() IS NOT NULL AND user_id = auth.uid()) OR
-    (auth.uid() IS NULL AND ip_address IS NOT NULL)
+    (auth.uid() IS NOT NULL AND user_id = auth.uid())
   );
 
 -- Create indexes for better performance
