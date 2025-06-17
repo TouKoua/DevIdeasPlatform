@@ -1,12 +1,13 @@
+import { createClient } from 'npm:@supabase/supabase-js@2.39.7';
 import { corsHeaders } from '../_shared/cors.ts';
 
 interface ContributionRequest {
   projectId: string;
   projectTitle: string;
-  projectCreatorEmail: string;
+  projectCreatorId: string;
   projectCreatorName: string;
+  requesterId: string;
   requesterName: string;
-  requesterEmail: string;
   projectUrl: string;
   message?: string;
 }
@@ -24,16 +25,16 @@ Deno.serve(async (req: Request) => {
     const {
       projectId,
       projectTitle,
-      projectCreatorEmail,
+      projectCreatorId,
       projectCreatorName,
+      requesterId,
       requesterName,
-      requesterEmail,
       projectUrl,
       message
     }: ContributionRequest = await req.json();
 
     // Validate required fields
-    if (!projectId || !projectTitle || !projectCreatorEmail || !projectCreatorName || !requesterName || !requesterEmail || !projectUrl) {
+    if (!projectId || !projectTitle || !projectCreatorId || !projectCreatorName || !requesterId || !requesterName || !projectUrl) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
         {
@@ -42,6 +43,52 @@ Deno.serve(async (req: Request) => {
         }
       );
     }
+
+    // Initialize Supabase client with service role key to access auth.users
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseServiceRoleKey) {
+      console.error('Missing Supabase environment variables');
+      return new Response(
+        JSON.stringify({ error: 'Database service not configured' }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+
+    // Fetch actual email addresses from auth.users
+    const { data: projectCreatorAuth, error: creatorError } = await supabase.auth.admin.getUserById(projectCreatorId);
+    const { data: requesterAuth, error: requesterError } = await supabase.auth.admin.getUserById(requesterId);
+
+    if (creatorError || !projectCreatorAuth.user?.email) {
+      console.error('Error fetching project creator email:', creatorError);
+      return new Response(
+        JSON.stringify({ error: 'Could not fetch project creator information' }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    if (requesterError || !requesterAuth.user?.email) {
+      console.error('Error fetching requester email:', requesterError);
+      return new Response(
+        JSON.stringify({ error: 'Could not fetch requester information' }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    const projectCreatorEmail = projectCreatorAuth.user.email;
+    const requesterEmail = requesterAuth.user.email;
 
     // Get SendGrid API key from environment
     const sendGridApiKey = Deno.env.get('SENDGRID_API_KEY');

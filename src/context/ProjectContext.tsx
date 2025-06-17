@@ -680,10 +680,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         body: JSON.stringify({
           projectId: project.id,
           projectTitle: project.title,
-          projectCreatorEmail: `${project.createdBy.name.toLowerCase().replace(' ', '.')}@example.com`, // Mock email
+          projectCreatorId: project.createdBy.id,
           projectCreatorName: project.createdBy.name,
+          requesterId: currentUser.id,
           requesterName: currentUser.name,
-          requesterEmail: `${currentUser.name.toLowerCase().replace(' ', '.')}@example.com`, // Mock email
           projectUrl: `${window.location.origin}/project/${project.id}`,
           message: message
         })
