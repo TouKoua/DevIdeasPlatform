@@ -61,6 +61,38 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
+    // Check if a contribution request already exists for this project and requester
+    const { data: existingRequest, error: checkError } = await supabase
+      .from('contribution_requests')
+      .select('id, status')
+      .eq('project_id', projectId)
+      .eq('requester_id', requesterId)
+      .single();
+
+    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
+      console.error('Error checking existing contribution request:', checkError);
+      return new Response(
+        JSON.stringify({ error: 'Database error while checking existing requests' }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    if (existingRequest) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Contribution request already exists',
+          details: `You have already submitted a ${existingRequest.status} contribution request for this project.`
+        }),
+        {
+          status: 409, // Conflict
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
     // Fetch actual email addresses from auth.users
     const { data: projectCreatorAuth, error: creatorError } = await supabase.auth.admin.getUserById(projectCreatorId);
     const { data: requesterAuth, error: requesterError } = await supabase.auth.admin.getUserById(requesterId);
@@ -150,12 +182,12 @@ Deno.serve(async (req: Request) => {
       </div>
       
       <div style="text-align: center; margin: 30px 0;">
-        <a href="mailto:${requesterEmail}?subject=Re: Contribution Request for ${projectTitle}" class="button">
-          📧 Reply to ${requesterName}
+        <a href="${projectUrl}/contributions" class="button">
+          🎯 Manage Contribution Requests
         </a>
       </div>
       
-      <p>You can reach out to ${requesterName} directly at <a href="mailto:${requesterEmail}" style="color: #667eea;">${requesterEmail}</a> to discuss potential collaboration opportunities.</p>
+      <p>You can manage this contribution request directly on CodeIdeas by visiting your project's contribution requests page. From there, you can accept or decline the request and send a response message.</p>
       
       <p>We're excited to see what you'll build together! 🎉</p>
     </div>
@@ -183,7 +215,9 @@ Contributor Information:
 - Email: ${requesterEmail}
 ${message ? `- Message: ${message}` : ''}
 
-You can reach out to ${requesterName} directly at ${requesterEmail} to discuss potential collaboration opportunities.
+You can manage this contribution request directly on CodeIdeas by visiting your project's contribution requests page at: ${projectUrl}/contributions
+
+From there, you can accept or decline the request and send a response message.
 
 Best regards,
 The CodeIdeas Team
@@ -225,7 +259,7 @@ This email was sent automatically from CodeIdeas. If you have any questions, ple
         categories: ['contribution-request'],
         custom_args: {
           project_id: projectId,
-          requester_email: requesterEmail
+          requester_id: requesterId
         }
       })
     });
@@ -248,10 +282,43 @@ This email was sent automatically from CodeIdeas. If you have any questions, ple
 
     console.log('Email sent successfully to:', projectCreatorEmail);
 
+    // Insert contribution request into database
+    const { data: contributionRequest, error: insertError } = await supabase
+      .from('contribution_requests')
+      .insert({
+        project_id: projectId,
+        requester_id: requesterId,
+        message: message || null,
+        status: 'pending'
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('Error inserting contribution request:', insertError);
+      
+      // Email was sent successfully but database insert failed
+      // This is a partial success scenario
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          warning: 'Email sent successfully, but there was an issue saving the request to the database. Please contact support if you don\'t see your request in the system.',
+          message: 'Contribution request sent successfully'
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    console.log('Contribution request saved to database:', contributionRequest.id);
+
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Contribution request sent successfully' 
+        message: 'Contribution request sent successfully',
+        requestId: contributionRequest.id
       }),
       {
         status: 200,
