@@ -520,7 +520,7 @@ const ProjectForm: React.FC = () => {
         <Button
           type="button"
           variant="outline"
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/home')}
           disabled={isLoading}
         >
           Cancel

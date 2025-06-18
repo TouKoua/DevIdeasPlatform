@@ -39,7 +39,7 @@ const UserProfilePage: React.FC = () => {
         <p className="text-gray-600 mb-6">The user profile you're looking for doesn't exist.</p>
         <Button 
           variant="primary" 
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/home')}
           icon={<ArrowLeftIcon size={18} />}
         >
           Back to Home

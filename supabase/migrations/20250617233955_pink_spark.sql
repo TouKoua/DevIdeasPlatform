@@ -1,42 +1,52 @@
 /*
-  # Add project views tracking system
+  # Create project views tracking system
 
   1. New Tables
     - `project_views`
-      - `project_id` (uuid, references projects)
-      - `user_id` (uuid, references profiles, nullable for anonymous users)
-      - `ip_address` (text, for tracking anonymous views)
+      - `id` (uuid, primary key)
+      - `project_id` (uuid, foreign key to projects)
+      - `user_id` (uuid, foreign key to profiles, nullable for anonymous views)
       - `created_at` (timestamp)
-      - Primary key (project_id, user_id) or (project_id, ip_address) for anonymous
+      - Unique constraint on (project_id, user_id)
 
   2. Security
-    - Enable RLS on project_views table
-    - Add policies for authenticated users to track their views
-    - Add policies for anonymous users based on IP
+    - Enable RLS on `project_views` table
+    - Add policy for authenticated users to track their views
+    - Add policy for users to update their own view records
+    - Add policy for read access for all users
+
+  3. Changes
+    - Add `views_count` column to projects table
+    - Create function to update project views count
+    - Create trigger to automatically update views count
+    - Add indexes for better performance
+    - Initialize views_count for existing projects
 */
 
 -- Create project_views table
 CREATE TABLE IF NOT EXISTS project_views (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id uuid REFERENCES projects(id) ON DELETE CASCADE NOT NULL,
   user_id uuid REFERENCES profiles(id) ON DELETE CASCADE,
   created_at timestamptz DEFAULT now(),
-  UNIQUE(project_id, user_id),
+  UNIQUE(project_id, user_id)
 );
 
 -- Enable Row Level Security
 ALTER TABLE project_views ENABLE ROW LEVEL SECURITY;
 
+-- Create policies for project_views
 CREATE POLICY "Authenticated users can track their views" ON project_views
   FOR INSERT WITH CHECK (
     (auth.uid() IS NOT NULL AND user_id = auth.uid())
   );
 
--- Add UPDATE policy for upsert operations
 CREATE POLICY "Users can update their own view records" ON project_views
   FOR UPDATE USING (
     (auth.uid() IS NOT NULL AND user_id = auth.uid())
   );
+
+CREATE POLICY "Enable read access for all users" ON project_views
+  FOR SELECT USING (true);
 
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_project_views_project_id ON project_views(project_id);

@@ -76,7 +76,7 @@ const ProjectDetailPage: React.FC = () => {
         <p className="text-gray-600 mb-6">The project you're looking for doesn't exist or has been removed.</p>
         <Button 
           variant="primary" 
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/home')}
           icon={<ArrowLeftIcon size={18} />}
         >
           Back to Home

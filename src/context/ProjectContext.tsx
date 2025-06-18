@@ -560,6 +560,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const incrementProjectViews = async (id: string) => {
+    if(!currentUser){
+      return;
+    }
     // Check if this project has already been viewed by this user/session
     if (viewedProjects.has(id)) {
       return; // Don't increment if already viewed
@@ -574,8 +577,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .from('project_views')
         .insert({
           project_id: id,
-          user_id: currentUser?.id || null,
-          ip_address: currentUser ? null : 'anonymous' // Simple IP tracking for anonymous users
+          user_id: currentUser?.id || null
         });
 
       if (error) {
@@ -664,17 +666,51 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const createContributionRequest = async (projectId: string, message?: string) => {
     if (!currentUser) throw new Error('Must be logged in to create contribution request');
     
-    const newRequest: ContributionRequest = {
-      id: `req-${Date.now()}`,
-      projectId,
-      requesterId: currentUser.id,
-      message,
-      status: 'pending',
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
-    setContributionRequests(prev => [newRequest, ...prev]);
+    const project = getProjectById(projectId);
+    if (!project) throw new Error('Project not found');
+
+    try {
+      // Call the Edge Function to send email notification
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/request-contribution`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          projectId: project.id,
+          projectTitle: project.title,
+          projectCreatorId: project.createdBy.id,
+          projectCreatorName: project.createdBy.name,
+          requesterId: currentUser.id,
+          requesterName: currentUser.name,
+          projectUrl: `${window.location.origin}/project/${project.id}`,
+          message: message
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send contribution request');
+      }
+
+      // Add to local state for immediate UI feedback
+      const newRequest: ContributionRequest = {
+        id: `req-${Date.now()}`,
+        projectId,
+        requesterId: currentUser.id,
+        message,
+        status: 'pending',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      setContributionRequests(prev => [newRequest, ...prev]);
+
+    } catch (error) {
+      console.error('Error creating contribution request:', error);
+      throw error;
+    }
   };
 
   const updateContributionRequestStatus = async (requestId: string, status: 'accepted' | 'declined', responseMessage?: string) => {

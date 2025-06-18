@@ -117,10 +117,10 @@ const Header: React.FC = () => {
             </Link>
             
             <nav className="hidden md:ml-8 md:flex md:space-x-6">
-              <Link to="/" className="text-gray-700 hover:text-indigo-600 px-3 py-2 text-sm font-medium">
+              <Link to="/home" className="text-gray-700 hover:text-indigo-600 px-3 py-2 text-sm font-medium">
                 Home
               </Link>
-              <Link to="/landing" className="text-gray-700 hover:text-indigo-600 px-3 py-2 text-sm font-medium">
+              <Link to="/" className="text-gray-700 hover:text-indigo-600 px-3 py-2 text-sm font-medium">
                 About
               </Link>
             </nav>
@@ -328,7 +328,7 @@ const Header: React.FC = () => {
               Home
             </Link>
             <Link 
-              to="/landing" 
+              to="/home" 
               className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
               onClick={() => setIsMenuOpen(false)}
             >

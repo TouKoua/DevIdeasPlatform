@@ -1,42 +1,64 @@
 /*
-  # Add project views tracking system
+  # Create project views tracking system
 
   1. New Tables
     - `project_views`
-      - `project_id` (uuid, references projects)
-      - `user_id` (uuid, references profiles, nullable for anonymous users)
-      - `ip_address` (text, for tracking anonymous views)
+      - `project_id` (uuid, foreign key to projects)
+      - `user_id` (uuid, foreign key to profiles, nullable for anonymous views)
       - `created_at` (timestamp)
-      - Primary key (project_id, user_id) or (project_id, ip_address) for anonymous
+      - Unique constraint on (project_id, user_id)
 
   2. Security
-    - Enable RLS on project_views table
-    - Add policies for authenticated users to track their views
-    - Add policies for anonymous users based on IP
+    - Enable RLS on `project_views` table
+    - Add policies for authenticated users to track views
+    - Add policy for read access
+
+  3. Changes
+    - Add `views_count` column to projects table
+    - Create trigger function to automatically update view counts
+    - Initialize view counts for existing projects
 */
 
 -- Create project_views table
 CREATE TABLE IF NOT EXISTS project_views (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id uuid REFERENCES projects(id) ON DELETE CASCADE NOT NULL,
   user_id uuid REFERENCES profiles(id) ON DELETE CASCADE,
-  created_at timestamptz DEFAULT now(),
-  UNIQUE(project_id, user_id),
+  created_at timestamptz DEFAULT now()
 );
+
+-- Add unique constraint if it doesn't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints 
+    WHERE constraint_name = 'project_views_project_id_user_id_key' 
+    AND table_name = 'project_views'
+  ) THEN
+    ALTER TABLE project_views ADD CONSTRAINT project_views_project_id_user_id_key UNIQUE(project_id, user_id);
+  END IF;
+END $$;
 
 -- Enable Row Level Security
 ALTER TABLE project_views ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist and recreate them
+DROP POLICY IF EXISTS "Authenticated users can track their views" ON project_views;
+DROP POLICY IF EXISTS "Users can update their own view records" ON project_views;
+DROP POLICY IF EXISTS "Enable read access for all users" ON project_views;
+
+-- Create policies for project_views
 CREATE POLICY "Authenticated users can track their views" ON project_views
   FOR INSERT WITH CHECK (
     (auth.uid() IS NOT NULL AND user_id = auth.uid())
   );
 
--- Add UPDATE policy for upsert operations
 CREATE POLICY "Users can update their own view records" ON project_views
   FOR UPDATE USING (
     (auth.uid() IS NOT NULL AND user_id = auth.uid())
   );
+
+CREATE POLICY "Enable read access for all users" ON project_views
+  FOR SELECT USING (true);
 
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_project_views_project_id ON project_views(project_id);

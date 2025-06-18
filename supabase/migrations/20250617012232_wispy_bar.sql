@@ -1,18 +1,24 @@
 /*
-  # Add project views tracking system
+  # Create project views tracking system
 
   1. New Tables
     - `project_views`
-      - `project_id` (uuid, references projects)
-      - `user_id` (uuid, references profiles, nullable for anonymous users)
-      - `ip_address` (text, for tracking anonymous views)
+      - `id` (uuid, primary key)
+      - `project_id` (uuid, foreign key to projects)
+      - `user_id` (uuid, foreign key to profiles, nullable for anonymous views)
       - `created_at` (timestamp)
-      - Primary key (project_id, user_id) or (project_id, ip_address) for anonymous
+      - Unique constraint on (project_id, user_id)
 
   2. Security
-    - Enable RLS on project_views table
+    - Enable RLS on `project_views` table
     - Add policies for authenticated users to track their views
-    - Add policies for anonymous users based on IP
+    - Add policy for users to update their own view records
+
+  3. Changes
+    - Add `views_count` column to projects table
+    - Create function to automatically update views count
+    - Create trigger to maintain views count consistency
+    - Initialize views count for existing projects
 */
 
 -- Create project_views table
@@ -21,7 +27,7 @@ CREATE TABLE IF NOT EXISTS project_views (
   project_id uuid REFERENCES projects(id) ON DELETE CASCADE NOT NULL,
   user_id uuid REFERENCES profiles(id) ON DELETE CASCADE,
   created_at timestamptz DEFAULT now(),
-  UNIQUE(project_id, user_id),
+  UNIQUE(project_id, user_id)
 );
 
 -- Enable Row Level Security
