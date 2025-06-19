@@ -136,6 +136,51 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Insert contribution request into database FIRST (before sending email)
+    // This ensures we catch any duplicate constraint violations early
+    const { data: contributionRequest, error: insertError } = await supabase
+      .from('contribution_requests')
+      .insert({
+        project_id: projectId,
+        requester_id: requesterId,
+        message: message || null,
+        status: 'pending'
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('Error inserting contribution request:', insertError);
+      
+      // Check if this is a unique constraint violation (duplicate request)
+      if (insertError.code === '23505') {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Contribution request already exists',
+            details: 'You have already submitted a contribution request for this project.'
+          }),
+          {
+            status: 409, // Conflict
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+      
+      // For any other database error
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to save contribution request',
+          details: 'Database error occurred while saving your request. Please try again.'
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    console.log('Contribution request saved to database:', contributionRequest.id);
+
     // Create email content
     const emailSubject = `New Contribution Request for "${projectTitle}"`;
     
@@ -268,42 +313,16 @@ This email was sent automatically from CodeIdeas. If you have any questions, ple
       const errorText = await emailResponse.text();
       console.error('SendGrid API error:', errorText);
       
-      return new Response(
-        JSON.stringify({ 
-          error: 'Failed to send email notification',
-          details: 'Email service temporarily unavailable'
-        }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
-    console.log('Email sent successfully to:', projectCreatorEmail);
-
-    // Insert contribution request into database
-    const { data: contributionRequest, error: insertError } = await supabase
-      .from('contribution_requests')
-      .insert({
-        project_id: projectId,
-        requester_id: requesterId,
-        message: message || null,
-        status: 'pending'
-      })
-      .select()
-      .single();
-
-    if (insertError) {
-      console.error('Error inserting contribution request:', insertError);
+      // Email failed but database record was created successfully
+      // This is a partial success - the request is saved but notification failed
+      console.log('Contribution request saved but email notification failed');
       
-      // Email was sent successfully but database insert failed
-      // This is a partial success scenario
       return new Response(
         JSON.stringify({ 
           success: true,
-          warning: 'Email sent successfully, but there was an issue saving the request to the database. Please contact support if you don\'t see your request in the system.',
-          message: 'Contribution request sent successfully'
+          warning: 'Contribution request saved successfully, but email notification could not be sent. The project creator will still see your request in their dashboard.',
+          message: 'Contribution request submitted successfully',
+          requestId: contributionRequest.id
         }),
         {
           status: 200,
@@ -312,7 +331,7 @@ This email was sent automatically from CodeIdeas. If you have any questions, ple
       );
     }
 
-    console.log('Contribution request saved to database:', contributionRequest.id);
+    console.log('Email sent successfully to:', projectCreatorEmail);
 
     return new Response(
       JSON.stringify({ 
