@@ -714,24 +714,42 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const updateContributionRequestStatus = async (requestId: string, status: 'accepted' | 'declined', responseMessage?: string) => {
-    setContributionRequests(prev =>
-      prev.map(request =>
-        request.id === requestId
-          ? { ...request, status, responseMessage, updatedAt: new Date() }
-          : request
-      )
-    );
+    if (!currentUser) {
+      throw new Error('Must be logged in to update contribution request status');
+    }
 
-    // Update the current contributors count in the project
-    const request = contributionRequests.find(r => r.id === requestId);
-    if (request && status === 'accepted') {
-      setProjects(prev =>
-        prev.map(project =>
-          project.id === request.projectId
-            ? { ...project, currentContributors: (project.currentContributors || 0) + 1 }
-            : project
+    try {
+      // Update the contribution request status in the database
+      const { error: updateError } = await supabase
+        .from('contribution_requests')
+        .update({
+          status: status,
+          response_message: responseMessage || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', requestId);
+
+      if (updateError) {
+        console.error('Error updating contribution request status:', updateError);
+        throw new Error('Failed to update contribution request status');
+      }
+
+      // Update local state
+      setContributionRequests(prev =>
+        prev.map(request =>
+          request.id === requestId
+            ? { ...request, status, responseMessage, updatedAt: new Date() }
+            : request
         )
       );
+
+      // Refresh projects to get the updated contributor count from the database
+      // The database trigger will have updated the current_contributors count
+      await refreshProjects();
+
+    } catch (error) {
+      console.error('Error in updateContributionRequestStatus:', error);
+      throw error;
     }
   };
 
