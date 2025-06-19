@@ -14,7 +14,7 @@ interface ProjectContextType {
   notifications: Notification[];
   contributionRequests: ContributionRequest[];
   loading: boolean;
-  addProject: (project: Omit<ProjectIdea, 'id' | 'createdAt' | 'views' | 'createdBy'>) => Promise<void>;
+  addProject: (project: Omit<ProjectIdea, 'id' | 'createdAt' | 'views' | 'createdBy'>) => Promise<string>;
   updateProject: (id: string, updates: Partial<Pick<ProjectIdea, 'title' | 'description' | 'difficulty' | 'programmingLanguages' | 'programmingSkills' | 'estimatedTime' | 'maxContributors' | 'showContributorCount'>>) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
   updateUserProfile: (updates: Partial<Pick<User, 'name' | 'bio' | 'location' | 'website' | 'github' | 'twitter' | 'avatar'>>) => Promise<void>;
@@ -22,7 +22,7 @@ interface ProjectContextType {
   saveProject: (id: string) => void;
   searchProjects: (query: string, filters: any) => ProjectIdea[];
   getProjectById: (id: string) => ProjectIdea | undefined;
-  getUserById: (id: string) => User | undefined;
+  getUserById: (id: string) => Promise<User | undefined>;
   getProjectsByUserId: (userId: string) => ProjectIdea[];
   createContributionRequest: (projectId: string, message?: string) => Promise<void>;
   updateContributionRequestStatus: (requestId: string, status: 'accepted' | 'declined', responseMessage?: string) => Promise<void>;
@@ -400,7 +400,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  const addProject = async (projectData: Omit<ProjectIdea, 'id' | 'createdAt' | 'views' | 'createdBy'>) => {
+  const addProject = async (projectData: Omit<ProjectIdea, 'id' | 'createdAt' | 'views' | 'createdBy'>): Promise<string> => {
     if (!currentUser) {
       throw new Error('Must be logged in to create a project');
     }
@@ -454,6 +454,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       // Refresh projects to get the latest data from the database
       await fetchProjects();
+
+      return newProjectId;
 
     } catch (error) {
       console.error('Error in addProject:', error);
@@ -655,8 +657,43 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return projects.find(project => project.id === id);
   };
 
-  const getUserById = (id: string): User | undefined => {
-    return users.find(user => user.id === id);
+  const getUserById = async (id: string): Promise<User | undefined> => {
+    try {
+      // First check if it's the current user
+      if (currentUser && currentUser.id === id) {
+        return currentUser;
+      }
+
+      // Try to fetch from Supabase database
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (!error && profile) {
+        return {
+          id: profile.id,
+          name: profile.name,
+          avatar: profile.avatar_url || 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
+          bio: profile.bio,
+          location: profile.location,
+          website: profile.website,
+          github: profile.github,
+          twitter: profile.twitter,
+          joinedDate: new Date(profile.created_at),
+          savedProjects: [],
+          postedProjects: []
+        };
+      }
+
+      // Fallback to mock users for demo purposes
+      return users.find(user => user.id === id);
+    } catch (error) {
+      console.error('Error fetching user by ID:', error);
+      // Fallback to mock users
+      return users.find(user => user.id === id);
+    }
   };
 
   const getProjectsByUserId = (userId: string): ProjectIdea[] => {
@@ -741,7 +778,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       .map(request => ({
         ...request,
         project: getProjectById(request.projectId),
-        requester: getUserById(request.requesterId)
+        requester: users.find(user => user.id === request.requesterId)
       }))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   };
@@ -752,7 +789,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       .map(request => ({
         ...request,
         project: getProjectById(request.projectId),
-        requester: getUserById(request.requesterId)
+        requester: users.find(user => user.id === request.requesterId)
       }))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   };
