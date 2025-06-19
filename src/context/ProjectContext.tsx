@@ -28,6 +28,7 @@ interface ProjectContextType {
   updateContributionRequestStatus: (requestId: string, status: 'accepted' | 'declined', responseMessage?: string) => Promise<void>;
   getContributionRequestsForProject: (projectId: string) => ContributionRequest[];
   getContributionRequestsByUser: (userId: string) => ContributionRequest[];
+  fetchContributionRequestsForProject: (projectId: string) => Promise<void>;
   currentUser: User | null;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
@@ -50,7 +51,7 @@ export const useProjects = () => {
 export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [projects, setProjects] = useState<ProjectIdea[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [contributionRequests, setContributionRequests] = useState<ContributionRequest[]>([]);
+  const [contributionRequests, setContributionRequests] = useState<Map<string, ContributionRequest[]>>(new Map());
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewedProjects, setViewedProjects] = useState<Set<string>>(new Set());
@@ -178,6 +179,60 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  // Fetch contribution requests for a specific project
+  const fetchContributionRequestsForProject = async (projectId: string) => {
+    try {
+      const { data: requestsData, error: requestsError } = await supabase
+        .from('contribution_requests')
+        .select(`
+          *,
+          profiles!contribution_requests_requester_id_fkey (
+            id,
+            name,
+            avatar_url
+          )
+        `)
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: false });
+
+      if (requestsError) {
+        console.error('Error fetching contribution requests:', requestsError);
+        return;
+      }
+
+      // Transform the data to match our ContributionRequest interface
+      const transformedRequests: ContributionRequest[] = requestsData.map((request: any) => ({
+        id: request.id,
+        projectId: request.project_id,
+        requesterId: request.requester_id,
+        message: request.message,
+        status: request.status as 'pending' | 'accepted' | 'declined',
+        createdAt: new Date(request.created_at),
+        updatedAt: new Date(request.updated_at),
+        responseMessage: request.response_message,
+        // Populated fields
+        requester: {
+          id: request.profiles.id,
+          name: request.profiles.name,
+          avatar: request.profiles.avatar_url || 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
+          joinedDate: new Date(), // We don't have this data in the query, so use current date
+          savedProjects: [],
+          postedProjects: []
+        }
+      }));
+
+      // Update the contribution requests map for this project
+      setContributionRequests(prev => {
+        const newMap = new Map(prev);
+        newMap.set(projectId, transformedRequests);
+        return newMap;
+      });
+
+    } catch (error) {
+      console.error('Error in fetchContributionRequestsForProject:', error);
+    }
+  };
+
   // Refresh projects function
   const refreshProjects = async () => {
     await fetchProjects();
@@ -219,38 +274,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       
       // Fetch projects from Supabase
       await fetchProjects();
-      
-      // Generate some mock contribution requests
-      setContributionRequests([
-        {
-          id: 'req-1',
-          projectId: 'project-1',
-          requesterId: 'user3',
-          message: 'I have experience with React and weather APIs. Would love to contribute to this project!',
-          status: 'pending',
-          createdAt: new Date('2023-11-15'),
-          updatedAt: new Date('2023-11-15')
-        },
-        {
-          id: 'req-2',
-          projectId: 'project-1',
-          requesterId: 'user4',
-          message: 'This looks like a great project. I can help with the backend API integration.',
-          status: 'pending',
-          createdAt: new Date('2023-11-14'),
-          updatedAt: new Date('2023-11-14')
-        },
-        {
-          id: 'req-3',
-          projectId: 'project-2',
-          requesterId: 'user1',
-          message: 'I love CLI tools and have built several in Python. Happy to collaborate!',
-          status: 'accepted',
-          createdAt: new Date('2023-11-10'),
-          updatedAt: new Date('2023-11-12'),
-          responseMessage: 'Great! I\'d love to have your help. Let me know your GitHub username and I\'ll add you as a collaborator.'
-        }
-      ]);
     };
 
     initializeData();
@@ -349,6 +372,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // Clear viewed projects on logout
     setViewedProjects(new Set());
     localStorage.removeItem('viewedProjects');
+    // Clear contribution requests cache
+    setContributionRequests(new Map());
     // Refresh projects after logout to remove user-specific data
     await fetchProjects();
   };
@@ -553,7 +578,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setProjects(prev => prev.filter(project => project.id !== id));
 
       // Also remove any related contribution requests from local state
-      setContributionRequests(prev => prev.filter(request => request.projectId !== id));
+      setContributionRequests(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(id);
+        return newMap;
+      });
 
     } catch (error) {
       console.error('Error in deleteProject:', error);
@@ -707,7 +736,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!project) throw new Error('Project not found');
 
     try {
-      // Call the Edge Function to send email notification
+      // Call the Edge Function to send email notification and save to database
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/request-contribution`, {
         method: 'POST',
         headers: {
@@ -731,18 +760,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         throw new Error(errorData.error || 'Failed to send contribution request');
       }
 
-      // Add to local state for immediate UI feedback
-      const newRequest: ContributionRequest = {
-        id: `req-${Date.now()}`,
-        projectId,
-        requesterId: currentUser.id,
-        message,
-        status: 'pending',
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      
-      setContributionRequests(prev => [newRequest, ...prev]);
+      // Refresh contribution requests for this project to get the latest data
+      await fetchContributionRequestsForProject(projectId);
 
     } catch (error) {
       console.error('Error creating contribution request:', error);
@@ -751,41 +770,70 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const updateContributionRequestStatus = async (requestId: string, status: 'accepted' | 'declined', responseMessage?: string) => {
-    setContributionRequests(prev =>
-      prev.map(request =>
-        request.id === requestId
-          ? { ...request, status, responseMessage, updatedAt: new Date() }
-          : request
-      )
-    );
+    if (!currentUser) {
+      throw new Error('Must be logged in to update contribution request status');
+    }
 
-    // Update the current contributors count in the project
-    const request = contributionRequests.find(r => r.id === requestId);
-    if (request && status === 'accepted') {
-      setProjects(prev =>
-        prev.map(project =>
-          project.id === request.projectId
-            ? { ...project, currentContributors: (project.currentContributors || 0) + 1 }
-            : project
-        )
-      );
+    try {
+      // Update the contribution request status in the database
+      const { error: updateError } = await supabase
+        .from('contribution_requests')
+        .update({
+          status: status,
+          response_message: responseMessage || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', requestId);
+
+      if (updateError) {
+        console.error('Error updating contribution request status:', updateError);
+        throw new Error('Failed to update contribution request status');
+      }
+
+      // Update local state for all projects that might have this request
+      setContributionRequests(prev => {
+        const newMap = new Map(prev);
+        for (const [projectId, requests] of newMap.entries()) {
+          const updatedRequests = requests.map(request =>
+            request.id === requestId
+              ? { ...request, status, responseMessage, updatedAt: new Date() }
+              : request
+          );
+          newMap.set(projectId, updatedRequests);
+        }
+        return newMap;
+      });
+
+      // Refresh projects to get the updated contributor count from the database
+      // The database trigger will have updated the current_contributors count
+      await refreshProjects();
+
+    } catch (error) {
+      console.error('Error in updateContributionRequestStatus:', error);
+      throw error;
     }
   };
 
   const getContributionRequestsForProject = (projectId: string): ContributionRequest[] => {
-    return contributionRequests
-      .filter(request => request.projectId === projectId)
+    const requests = contributionRequests.get(projectId) || [];
+    return requests
       .map(request => ({
         ...request,
         project: getProjectById(request.projectId),
-        requester: users.find(user => user.id === request.requesterId)
+        requester: getUserById(request.requesterId) || request.requester
       }))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   };
 
   const getContributionRequestsByUser = (userId: string): ContributionRequest[] => {
-    return contributionRequests
-      .filter(request => request.requesterId === userId)
+    const allRequests: ContributionRequest[] = [];
+    
+    // Collect all requests from all projects
+    for (const requests of contributionRequests.values()) {
+      allRequests.push(...requests.filter(request => request.requesterId === userId));
+    }
+    
+    return allRequests
       .map(request => ({
         ...request,
         project: getProjectById(request.projectId),
@@ -800,7 +848,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         projects,
         users,
         notifications,
-        contributionRequests,
+        contributionRequests: [], // This is now handled by the map, but we keep it for backward compatibility
         loading,
         addProject,
         updateProject,
@@ -816,6 +864,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         updateContributionRequestStatus,
         getContributionRequestsForProject,
         getContributionRequestsByUser,
+        fetchContributionRequestsForProject,
         currentUser,
         login,
         signup,

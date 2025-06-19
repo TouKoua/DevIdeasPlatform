@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useProjects } from '../context/ProjectContext';
 import Button from '../components/ui/Button';
@@ -21,6 +21,7 @@ const ContributionRequestsPage: React.FC = () => {
   const { 
     getProjectById, 
     getContributionRequestsForProject, 
+    fetchContributionRequestsForProject,
     updateContributionRequestStatus,
     currentUser 
   } = useProjects();
@@ -31,6 +32,13 @@ const ContributionRequestsPage: React.FC = () => {
 
   const project = getProjectById(id || '');
   const contributionRequests = getContributionRequestsForProject(id || '');
+
+  // Fetch contribution requests when the component mounts or project ID changes
+  useEffect(() => {
+    if (id) {
+      fetchContributionRequestsForProject(id);
+    }
+  }, [id, fetchContributionRequestsForProject]);
 
   if (!project) {
     return (

@@ -44,21 +44,13 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
   };
 
   const handleUserClick = (e: React.MouseEvent) => {
-    e.preventDefault();
+    // Only stop propagation to prevent the card click, but allow navigation
     e.stopPropagation();
   };
 
-  // Determine the correct profile link
+  // Always navigate to public profile page for project creators
   const getProfileLink = () => {
-    if (!currentUser) {
-      return `/public-profile/${project.createdBy.id}`;
-    }
-    
-    if (currentUser.id === project.createdBy.id) {
-      return '/profile'; // Own profile
-    }
-    
-    return `/public-profile/${project.createdBy.id}`; // Other user's public profile
+    return `/public-profile/${project.createdBy.id}`;
   };
 
   // Check if contributor limit is reached
