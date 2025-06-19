@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useProjects } from '../context/ProjectContext';
 import ProjectCard from '../components/ProjectCard';
@@ -18,15 +18,51 @@ import {
   CodeIcon,
   CpuIcon
 } from 'lucide-react';
+import { User } from '../types';
 
 const PublicProfilePage: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
   const { getUserById, getProjectsByUserId, currentUser } = useProjects();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'posted' | 'about'>('about');
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const user = getUserById(userId || '');
   const userProjects = getProjectsByUserId(userId || '');
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      if (!userId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const userData = await getUserById(userId);
+        setUser(userData || null);
+      } catch (error) {
+        console.error('Error fetching user:', error);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, [userId, getUserById]);
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+        <div className="animate-pulse">
+          <div className="w-20 h-20 bg-gray-200 rounded-full mx-auto mb-4"></div>
+          <div className="h-6 bg-gray-200 rounded w-48 mx-auto mb-2"></div>
+          <div className="h-4 bg-gray-200 rounded w-32 mx-auto"></div>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return (

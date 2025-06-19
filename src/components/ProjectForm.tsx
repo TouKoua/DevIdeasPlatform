@@ -224,7 +224,7 @@ const ProjectForm: React.FC = () => {
     setSubmitError('');
     
     try {
-      await addProject({
+      const newProject = await addProject({
         title: formData.title,
         description: formData.description,
         difficulty: formData.difficulty as 'beginner' | 'intermediate' | 'advanced',
@@ -235,7 +235,14 @@ const ProjectForm: React.FC = () => {
         showContributorCount: formData.showContributorCount,
       });
       
-      navigate('/');
+      // Get the newly created project ID from the refreshed projects list
+      // Since addProject refreshes the projects list, we need to find the project
+      // by matching the title and creator (as a fallback approach)
+      // The better approach would be to return the project ID from addProject
+      
+      // For now, navigate to home and let the user find their project
+      // TODO: Modify addProject to return the created project ID
+      navigate('/profile');
     } catch (error) {
       console.error('Error creating project:', error);
       setSubmitError('Failed to create project. Please try again.');
