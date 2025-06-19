@@ -31,6 +31,7 @@ const ProjectDetailPage: React.FC = () => {
     currentUser,
     createContributionRequest,
     getContributionRequestsForProject,
+    fetchContributionRequestsForProject,
     deleteProject
   } = useProjects();
   const navigate = useNavigate();
@@ -44,6 +45,13 @@ const ProjectDetailPage: React.FC = () => {
   
   const project = getProjectById(id || '');
   const contributionRequests = getContributionRequestsForProject(id || '');
+  
+  // Fetch contribution requests when the component mounts or project ID changes
+  useEffect(() => {
+    if (id) {
+      fetchContributionRequestsForProject(id);
+    }
+  }, [id, fetchContributionRequestsForProject]);
   
   // Calculate similar projects only once when the project loads or changes
   useEffect(() => {
