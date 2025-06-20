@@ -175,7 +175,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       setLoading(true);
       
-      // Fetch projects with creator profiles and tags
+      // Fetch projects with creator profiles, tags, and user websites
       const { data: projectsData, error: projectsError } = await supabase
         .from('projects')
         .select(`
@@ -194,6 +194,25 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (projectsError) {
         console.error('Error fetching projects:', projectsError);
         return;
+      }
+
+      // Fetch user websites for all project creators
+      const creatorIds = projectsData.map((project: any) => project.profiles.id);
+      const { data: userWebsitesData, error: websitesError } = await supabase
+        .from('user_websites')
+        .select('*')
+        .in('id', creatorIds);
+
+      if (websitesError) {
+        console.error('Error fetching user websites:', websitesError);
+      }
+
+      // Create a map of user websites for quick lookup
+      const userWebsitesMap = new Map();
+      if (userWebsitesData) {
+        userWebsitesData.forEach((website: any) => {
+          userWebsitesMap.set(website.id, website);
+        });
       }
 
       // Transform the data to match our ProjectIdea interface
@@ -215,6 +234,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const programmingSkills = allTags.filter((tag: string) => 
           !commonLanguages.includes(tag)
         );
+
+        // Get user websites data for this creator
+        const userWebsite = userWebsitesMap.get(project.profiles.id);
 
         return {
           id: project.id,
@@ -312,7 +334,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
-        // Fetch user profile
+        // Fetch user profile with websites
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
@@ -320,15 +342,46 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           .single();
 
         if (!profileError && profile) {
+          // Fetch user websites
+          const { data: userWebsite, error: websiteError } = await supabase
+            .from('user_websites')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          if (websiteError && websiteError.code !== 'PGRST116') {
+            console.error('Error fetching user website:', websiteError);
+          }
+
+          // Extract social links from URLs
+          const extractUsernameFromUrl = (url: string | null, platform: string): string | undefined => {
+            if (!url) return undefined;
+            
+            try {
+              const urlObj = new URL(url);
+              const pathname = urlObj.pathname;
+              
+              if (platform === 'github' && urlObj.hostname === 'github.com') {
+                return pathname.split('/')[1] || undefined;
+              } else if (platform === 'twitter' && (urlObj.hostname === 'twitter.com' || urlObj.hostname === 'x.com')) {
+                return pathname.split('/')[1] || undefined;
+              }
+              
+              return url; // Return full URL if not a recognized pattern
+            } catch {
+              return url; // Return as-is if not a valid URL
+            }
+          };
+
           setCurrentUser({
             id: profile.id,
             name: profile.name,
             avatar: profile.avatar_url || 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
             bio: profile.bio,
             location: profile.location,
-            website: profile.website,
-            github: profile.github,
-            twitter: profile.twitter,
+            website: userWebsite?.website_url,
+            github: extractUsernameFromUrl(userWebsite?.github_url, 'github'),
+            twitter: extractUsernameFromUrl(userWebsite?.twitter_url, 'twitter'),
             joinedDate: new Date(profile.created_at),
             savedProjects: [],
             postedProjects: []
@@ -426,15 +479,46 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       if (profileError) throw profileError;
 
+      // Fetch user websites
+      const { data: userWebsite, error: websiteError } = await supabase
+        .from('user_websites')
+        .select('*')
+        .eq('id', profile.id)
+        .single();
+
+      if (websiteError && websiteError.code !== 'PGRST116') {
+        console.error('Error fetching user website:', websiteError);
+      }
+
+      // Extract social links from URLs
+      const extractUsernameFromUrl = (url: string | null, platform: string): string | undefined => {
+        if (!url) return undefined;
+        
+        try {
+          const urlObj = new URL(url);
+          const pathname = urlObj.pathname;
+          
+          if (platform === 'github' && urlObj.hostname === 'github.com') {
+            return pathname.split('/')[1] || undefined;
+          } else if (platform === 'twitter' && (urlObj.hostname === 'twitter.com' || urlObj.hostname === 'x.com')) {
+            return pathname.split('/')[1] || undefined;
+          }
+          
+          return url; // Return full URL if not a recognized pattern
+        } catch {
+          return url; // Return as-is if not a valid URL
+        }
+      };
+
       setCurrentUser({
         id: profile.id,
         name: profile.name,
         avatar: profile.avatar_url || 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
         bio: profile.bio,
         location: profile.location,
-        website: profile.website,
-        github: profile.github,
-        twitter: profile.twitter,
+        website: userWebsite?.website_url,
+        github: extractUsernameFromUrl(userWebsite?.github_url, 'github'),
+        twitter: extractUsernameFromUrl(userWebsite?.twitter_url, 'twitter'),
         joinedDate: new Date(profile.created_at),
         savedProjects: [],
         postedProjects: []
@@ -498,24 +582,54 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     try {
-      // Update the profile in Supabase
-      const { error } = await supabase
+      // Update the profile in Supabase (excluding social links)
+      const { error: profileError } = await supabase
         .from('profiles')
         .update({
           name: updates.name,
           bio: updates.bio,
           location: updates.location,
-          website: updates.website,
-          github: updates.github,
-          twitter: updates.twitter,
           avatar_url: updates.avatar,
           updated_at: new Date().toISOString()
         })
         .eq('id', currentUser.id);
 
-      if (error) {
-        console.error('Error updating profile:', error);
+      if (profileError) {
+        console.error('Error updating profile:', profileError);
         throw new Error('Failed to update profile');
+      }
+
+      // Update or insert user websites data
+      const websiteData: any = {
+        id: currentUser.id,
+        website_name: 'Personal Website'
+      };
+
+      // Add URLs, converting usernames to full URLs where needed
+      if (updates.website) {
+        websiteData.website_url = updates.website.startsWith('http') ? updates.website : `https://${updates.website}`;
+      }
+
+      if (updates.github) {
+        websiteData.github_url = updates.github.startsWith('http') ? updates.github : `https://github.com/${updates.github}`;
+      }
+
+      if (updates.twitter) {
+        websiteData.twitter_url = updates.twitter.startsWith('http') ? updates.twitter : `https://twitter.com/${updates.twitter}`;
+      }
+
+      // Only update user_websites if we have social link data
+      if (updates.website || updates.github || updates.twitter) {
+        const { error: websiteError } = await supabase
+          .from('user_websites')
+          .upsert(websiteData, {
+            onConflict: 'id'
+          });
+
+        if (websiteError) {
+          console.error('Error updating user websites:', websiteError);
+          throw new Error('Failed to update social links');
+        }
       }
 
       // Update the current user state
@@ -815,15 +929,46 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .single();
 
       if (!error && profile) {
+        // Fetch user websites
+        const { data: userWebsite, error: websiteError } = await supabase
+          .from('user_websites')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (websiteError && websiteError.code !== 'PGRST116') {
+          console.error('Error fetching user website:', websiteError);
+        }
+
+        // Extract social links from URLs
+        const extractUsernameFromUrl = (url: string | null, platform: string): string | undefined => {
+          if (!url) return undefined;
+          
+          try {
+            const urlObj = new URL(url);
+            const pathname = urlObj.pathname;
+            
+            if (platform === 'github' && urlObj.hostname === 'github.com') {
+              return pathname.split('/')[1] || undefined;
+            } else if (platform === 'twitter' && (urlObj.hostname === 'twitter.com' || urlObj.hostname === 'x.com')) {
+              return pathname.split('/')[1] || undefined;
+            }
+            
+            return url; // Return full URL if not a recognized pattern
+          } catch {
+            return url; // Return as-is if not a valid URL
+          }
+        };
+
         return {
           id: profile.id,
           name: profile.name,
           avatar: profile.avatar_url || 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
           bio: profile.bio,
           location: profile.location,
-          website: profile.website,
-          github: profile.github,
-          twitter: profile.twitter,
+          website: userWebsite?.website_url,
+          github: extractUsernameFromUrl(userWebsite?.github_url, 'github'),
+          twitter: extractUsernameFromUrl(userWebsite?.twitter_url, 'twitter'),
           joinedDate: new Date(profile.created_at),
           savedProjects: [],
           postedProjects: []
