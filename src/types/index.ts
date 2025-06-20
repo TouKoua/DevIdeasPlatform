@@ -35,13 +35,16 @@ export interface User {
 }
 
 export interface Notification {
-  id: number;
+  id: string;
+  userId: string;
   title: string;
   message: string;
-  time: string;
-  unread: boolean;
-  projectId?: string;
-  type: 'view' | 'recommendation' | 'welcome';
+  readStatus: boolean;
+  notificationType: string;
+  relatedProjectId?: string;
+  relatedUserId?: string;
+  linkUrl?: string;
+  createdAt: Date;
 }
 
 export interface ContributionRequest {

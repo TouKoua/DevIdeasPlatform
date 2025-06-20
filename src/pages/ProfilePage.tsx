@@ -54,6 +54,22 @@ const ProfilePage: React.FC = () => {
 
   const projectToDeleteData = projectToDelete ? projects.find(p => p.id === projectToDelete) : null;
 
+  const formatNotificationTime = (createdAt: Date) => {
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) return `${diffInDays}d ago`;
+    
+    return createdAt.toLocaleDateString();
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Profile Header */}
@@ -99,7 +115,7 @@ const ProfilePage: React.FC = () => {
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-gray-900">
-              {notifications.filter(n => n.unread).length}
+              {notifications.filter(n => !n.readStatus).length}
             </div>
             <div className="text-sm text-gray-500">Unread Notifications</div>
           </div>
@@ -142,9 +158,9 @@ const ProfilePage: React.FC = () => {
             >
               <BellIcon size={18} className="mr-2" />
               Notifications
-              {notifications.some(n => n.unread) && (
+              {notifications.some(n => !n.readStatus) && (
                 <span className="ml-2 bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-xs">
-                  {notifications.filter(n => n.unread).length}
+                  {notifications.filter(n => !n.readStatus).length}
                 </span>
               )}
             </button>
@@ -229,27 +245,35 @@ const ProfilePage: React.FC = () => {
                 <>
                   <div className="flex justify-between items-center pb-4">
                     <h3 className="text-lg font-medium text-gray-900">Recent Notifications</h3>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={markAllNotificationsAsRead}
-                    >
-                      Mark all as read
-                    </Button>
+                    {notifications.some(n => !n.readStatus) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={markAllNotificationsAsRead}
+                      >
+                        Mark all as read
+                      </Button>
+                    )}
                   </div>
                   {notifications.map((notification) => (
                     <div
                       key={notification.id}
-                      className={`py-4 ${notification.unread ? 'bg-indigo-50' : ''}`}
+                      className={`py-4 cursor-pointer hover:bg-gray-50 rounded-md px-3 -mx-3 transition-colors ${
+                        !notification.readStatus ? 'bg-indigo-50 border-l-2 border-indigo-500' : ''
+                      }`}
                       onClick={() => markNotificationAsRead(notification.id)}
                     >
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900">{notification.title}</p>
-                          <p className="text-sm text-gray-500">{notification.message}</p>
-                          <p className="text-xs text-gray-400 mt-1">{notification.time}</p>
+                          <p className={`text-sm font-medium ${!notification.readStatus ? 'text-gray-900' : 'text-gray-700'}`}>
+                            {notification.title}
+                          </p>
+                          <p className="text-sm text-gray-500 mt-1">{notification.message}</p>
+                          <p className="text-xs text-gray-400 mt-1">
+                            {formatNotificationTime(notification.createdAt)}
+                          </p>
                         </div>
-                        {notification.unread && (
+                        {!notification.readStatus && (
                           <div className="w-2 h-2 bg-indigo-500 rounded-full mt-2" />
                         )}
                       </div>

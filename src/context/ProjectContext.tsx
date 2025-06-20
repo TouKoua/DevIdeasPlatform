@@ -29,12 +29,12 @@ interface ProjectContextType {
   getContributionRequestsForProject: (projectId: string) => ContributionRequest[];
   getContributionRequestsByUser: (userId: string) => ContributionRequest[];
   fetchContributionRequestsForProject: (projectId: string) => Promise<void>;
+  markNotificationAsRead: (id: string) => Promise<void>;
+  markAllNotificationsAsRead: () => Promise<void>;
   currentUser: User | null;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
-  markNotificationAsRead: (id: number) => void;
-  markAllNotificationsAsRead: () => void;
   refreshProjects: () => Promise<void>;
 }
 
@@ -51,38 +51,11 @@ export const useProjects = () => {
 export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [projects, setProjects] = useState<ProjectIdea[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [contributionRequests, setContributionRequests] = useState<Map<string, ContributionRequest[]>>(new Map());
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewedProjects, setViewedProjects] = useState<Set<string>>(new Set());
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: 1,
-      title: 'Your project gained views',
-      message: 'Your Weather Dashboard project has been viewed 25 times today',
-      time: '5m ago',
-      unread: true,
-      projectId: 'project-1',
-      type: 'view'
-    },
-    {
-      id: 2,
-      title: 'Project recommendation',
-      message: 'Check out this new project that matches your interests',
-      time: '1h ago',
-      unread: true,
-      projectId: 'project-3',
-      type: 'recommendation'
-    },
-    {
-      id: 3,
-      title: 'Welcome to CodeIdeas',
-      message: 'Start exploring project ideas or share your own',
-      time: '2d ago',
-      unread: false,
-      type: 'welcome'
-    }
-  ]);
 
   // Load viewed projects from localStorage on mount
   useEffect(() => {
@@ -101,6 +74,101 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     localStorage.setItem('viewedProjects', JSON.stringify(Array.from(viewedProjects)));
   }, [viewedProjects]);
+
+  // Fetch notifications from Supabase
+  const fetchNotifications = async () => {
+    if (!currentUser) return;
+
+    try {
+      const { data: notificationsData, error } = await supabase
+        .from('user_notifications')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) {
+        console.error('Error fetching notifications:', error);
+        return;
+      }
+
+      const transformedNotifications: Notification[] = notificationsData.map((notification: any) => ({
+        id: notification.id,
+        userId: notification.user_id,
+        title: notification.title,
+        message: notification.message,
+        readStatus: notification.read_status,
+        notificationType: notification.notification_type,
+        relatedProjectId: notification.related_project_id,
+        relatedUserId: notification.related_user_id,
+        linkUrl: notification.link_url,
+        createdAt: new Date(notification.created_at)
+      }));
+
+      setNotifications(transformedNotifications);
+    } catch (error) {
+      console.error('Error in fetchNotifications:', error);
+    }
+  };
+
+  // Set up real-time subscription for notifications
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const channel = supabase
+      .channel('user_notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_notifications',
+          filter: `user_id=eq.${currentUser.id}`
+        },
+        (payload) => {
+          console.log('Real-time notification update:', payload);
+          
+          if (payload.eventType === 'INSERT') {
+            const newNotification: Notification = {
+              id: payload.new.id,
+              userId: payload.new.user_id,
+              title: payload.new.title,
+              message: payload.new.message,
+              readStatus: payload.new.read_status,
+              notificationType: payload.new.notification_type,
+              relatedProjectId: payload.new.related_project_id,
+              relatedUserId: payload.new.related_user_id,
+              linkUrl: payload.new.link_url,
+              createdAt: new Date(payload.new.created_at)
+            };
+            
+            setNotifications(prev => [newNotification, ...prev]);
+          } else if (payload.eventType === 'UPDATE') {
+            setNotifications(prev => 
+              prev.map(notification => 
+                notification.id === payload.new.id
+                  ? {
+                      ...notification,
+                      readStatus: payload.new.read_status,
+                      title: payload.new.title,
+                      message: payload.new.message
+                    }
+                  : notification
+              )
+            );
+          } else if (payload.eventType === 'DELETE') {
+            setNotifications(prev => 
+              prev.filter(notification => notification.id !== payload.old.id)
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUser]);
 
   // Fetch projects from Supabase
   const fetchProjects = async () => {
@@ -279,20 +347,65 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     initializeData();
   }, []);
 
-  const markNotificationAsRead = (id: number) => {
-    setNotifications(prev =>
-      prev.map(notification =>
-        notification.id === id
-          ? { ...notification, unread: false }
-          : notification
-      )
-    );
+  // Fetch notifications when currentUser changes
+  useEffect(() => {
+    if (currentUser) {
+      fetchNotifications();
+    } else {
+      setNotifications([]);
+    }
+  }, [currentUser]);
+
+  const markNotificationAsRead = async (id: string) => {
+    if (!currentUser) return;
+
+    try {
+      const { error } = await supabase
+        .from('user_notifications')
+        .update({ read_status: true })
+        .eq('id', id)
+        .eq('user_id', currentUser.id);
+
+      if (error) {
+        console.error('Error marking notification as read:', error);
+        return;
+      }
+
+      // Update local state
+      setNotifications(prev =>
+        prev.map(notification =>
+          notification.id === id
+            ? { ...notification, readStatus: true }
+            : notification
+        )
+      );
+    } catch (error) {
+      console.error('Error in markNotificationAsRead:', error);
+    }
   };
 
-  const markAllNotificationsAsRead = () => {
-    setNotifications(prev =>
-      prev.map(notification => ({ ...notification, unread: false }))
-    );
+  const markAllNotificationsAsRead = async () => {
+    if (!currentUser) return;
+
+    try {
+      const { error } = await supabase
+        .from('user_notifications')
+        .update({ read_status: true })
+        .eq('user_id', currentUser.id)
+        .eq('read_status', false);
+
+      if (error) {
+        console.error('Error marking all notifications as read:', error);
+        return;
+      }
+
+      // Update local state
+      setNotifications(prev =>
+        prev.map(notification => ({ ...notification, readStatus: true }))
+      );
+    } catch (error) {
+      console.error('Error in markAllNotificationsAsRead:', error);
+    }
   };
 
   const login = async (email: string, password: string) => {
@@ -369,6 +482,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const logout = async () => {
     await supabase.auth.signOut();
     setCurrentUser(null);
+    setNotifications([]);
     // Clear viewed projects on logout
     setViewedProjects(new Set());
     localStorage.removeItem('viewedProjects');

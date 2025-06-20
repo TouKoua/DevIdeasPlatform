@@ -97,9 +97,27 @@ const Header: React.FC = () => {
     markNotificationAsRead(notification.id);
     setIsNotificationsOpen(false);
     
-    if (notification.projectId) {
-      navigate(`/project/${notification.projectId}`);
+    if (notification.linkUrl) {
+      navigate(notification.linkUrl);
+    } else if (notification.relatedProjectId) {
+      navigate(`/project/${notification.relatedProjectId}`);
     }
+  };
+
+  const formatNotificationTime = (createdAt: Date) => {
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) return `${diffInDays}d ago`;
+    
+    return createdAt.toLocaleDateString();
   };
 
   // Determine the logo destination based on user login status
@@ -186,7 +204,7 @@ const Header: React.FC = () => {
                     className="relative p-1 rounded-full hover:bg-gray-100 focus:outline-none"
                   >
                     <BellIcon size={20} className="text-gray-600" />
-                    {notifications.some(n => n.unread) && (
+                    {notifications.some(n => !n.readStatus) && (
                       <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
                     )}
                   </button>
@@ -194,35 +212,50 @@ const Header: React.FC = () => {
                   {isNotificationsOpen && (
                     <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg py-1 border border-gray-200">
                       <div className="px-4 py-2 border-b border-gray-100">
-                        <h3 className="text-sm font-medium text-gray-900">Notifications</h3>
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-medium text-gray-900">Notifications</h3>
+                          {notifications.some(n => !n.readStatus) && (
+                            <button 
+                              className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                              onClick={markAllNotificationsAsRead}
+                            >
+                              Mark all as read
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <div className="max-h-96 overflow-y-auto">
-                        {notifications.map((notification) => (
-                          <div
-                            key={notification.id}
-                            className={`px-4 py-3 hover:bg-gray-50 cursor-pointer ${notification.unread ? 'bg-indigo-50' : ''}`}
-                            onClick={() => handleNotificationClick(notification)}
-                          >
-                            <div className="flex justify-between items-start">
-                              <div className="flex-1">
-                                <p className="text-sm font-medium text-gray-900">{notification.title}</p>
-                                <p className="text-sm text-gray-500">{notification.message}</p>
-                                <p className="text-xs text-gray-400 mt-1">{notification.time}</p>
+                        {notifications.length > 0 ? (
+                          notifications.map((notification) => (
+                            <div
+                              key={notification.id}
+                              className={`px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors ${
+                                !notification.readStatus ? 'bg-indigo-50 border-l-2 border-indigo-500' : ''
+                              }`}
+                              onClick={() => handleNotificationClick(notification)}
+                            >
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <p className={`text-sm font-medium ${!notification.readStatus ? 'text-gray-900' : 'text-gray-700'}`}>
+                                    {notification.title}
+                                  </p>
+                                  <p className="text-sm text-gray-500 mt-1">{notification.message}</p>
+                                  <p className="text-xs text-gray-400 mt-1">
+                                    {formatNotificationTime(notification.createdAt)}
+                                  </p>
+                                </div>
+                                {!notification.readStatus && (
+                                  <div className="w-2 h-2 bg-indigo-500 rounded-full mt-2 flex-shrink-0" />
+                                )}
                               </div>
-                              {notification.unread && (
-                                <div className="w-2 h-2 bg-indigo-500 rounded-full mt-2" />
-                              )}
                             </div>
+                          ))
+                        ) : (
+                          <div className="px-4 py-8 text-center text-gray-500">
+                            <BellIcon size={32} className="mx-auto mb-2 text-gray-300" />
+                            <p className="text-sm">No notifications yet</p>
                           </div>
-                        ))}
-                      </div>
-                      <div className="px-4 py-2 border-t border-gray-100">
-                        <button 
-                          className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
-                          onClick={markAllNotificationsAsRead}
-                        >
-                          Mark all as read
-                        </button>
+                        )}
                       </div>
                     </div>
                   )}
