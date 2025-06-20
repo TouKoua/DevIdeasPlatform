@@ -194,7 +194,7 @@ const PublicProfilePage: React.FC = () => {
               }`}
             >
               <UserIcon size={18} className="mr-2" />
-              About
+              Bio
             </button>
             <button
               onClick={() => setActiveTab('posted')}
