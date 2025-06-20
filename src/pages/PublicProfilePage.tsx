@@ -193,7 +193,7 @@ const PublicProfilePage: React.FC = () => {
                   : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              <UserIcon size={18} className="mr-2" />
+              <UserIcon size={18} className="mr-2" /> 
               Biography
             </button>
             <button
