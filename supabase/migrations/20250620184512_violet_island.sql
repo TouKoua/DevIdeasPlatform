@@ -85,7 +85,7 @@ BEGIN
     CREATE POLICY "Public read access to website data"
       ON user_websites
       FOR SELECT
-      TO public
+      TO public  
       USING (true);
   END IF;
 END $$;
