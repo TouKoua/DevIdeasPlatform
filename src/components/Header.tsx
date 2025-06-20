@@ -103,7 +103,7 @@ const Header: React.FC = () => {
   };
 
   // Determine the logo destination based on user login status
-  const logoDestination = currentUser ? "/home" : "/";
+  const logoDestination = currentUser ? "/" : "/home";
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
