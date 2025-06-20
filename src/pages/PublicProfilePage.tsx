@@ -125,9 +125,6 @@ const PublicProfilePage: React.FC = () => {
                   <span>{user.location}</span>
                 </div>
               )}
-              {user.bio && (
-                <p className="text-gray-600 mt-2 max-w-2xl">{user.bio}</p>
-              )}
             </div>
           </div>
         </div>
