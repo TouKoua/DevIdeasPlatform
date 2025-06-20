@@ -34,29 +34,6 @@ BEGIN
   END IF;
 END $$;
 
--- Migrate existing data from profiles to user_websites
-INSERT INTO user_websites (id, website_name, website_url, github_url, twitter_url)
-SELECT 
-  p.id,
-  'Personal Website' as website_name,
-  p.website as website_url,
-  CASE 
-    WHEN p.github IS NOT NULL AND p.github != '' 
-    THEN 'https://github.com/' || p.github 
-    ELSE NULL 
-  END as github_url,
-  CASE 
-    WHEN p.twitter IS NOT NULL AND p.twitter != '' 
-    THEN 'https://twitter.com/' || p.twitter 
-    ELSE NULL 
-  END as twitter_url
-FROM profiles p
-WHERE p.website IS NOT NULL OR p.github IS NOT NULL OR p.twitter IS NOT NULL
-ON CONFLICT (id) DO UPDATE SET
-  website_url = EXCLUDED.website_url,
-  github_url = EXCLUDED.github_url,
-  twitter_url = EXCLUDED.twitter_url;
-
 -- Add RLS policies for user_websites table if they don't exist
 DO $$
 BEGIN
