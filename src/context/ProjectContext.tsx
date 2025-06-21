@@ -113,9 +113,16 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
   };
 
+  // Check if Supabase is properly configured
+  const isSupabaseConfigured = () => {
+    const url = import.meta.env.VITE_SUPABASE_URL;
+    const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    return url && key && url !== '' && key !== '';
+  };
+
   // Fetch notifications from Supabase
   const fetchNotifications = async () => {
-    if (!currentUser) return;
+    if (!currentUser || !isSupabaseConfigured()) return;
 
     try {
       const { data: notificationsData, error } = await supabase
@@ -151,7 +158,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Set up real-time subscription for notifications
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || !isSupabaseConfigured()) return;
 
     const channel = supabase
       .channel('user_notifications')
@@ -213,6 +220,15 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       setLoading(true);
       
+      if (!isSupabaseConfigured()) {
+        console.warn('Supabase not configured, using mock data');
+        // Use mock data if Supabase is not configured
+        const mockUsers = generateMockUsers();
+        setUsers(mockUsers);
+        setProjects([]);
+        return;
+      }
+      
       // Fetch projects with creator profiles, tags, and user websites
       const { data: projectsData, error: projectsError } = await supabase
         .from('projects')
@@ -231,30 +247,36 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       if (projectsError) {
         console.error('Error fetching projects:', projectsError);
+        // Fall back to empty array instead of throwing
+        setProjects([]);
         return;
       }
 
       // Fetch user websites for all project creators
-      const creatorIds = projectsData.map((project: any) => project.profiles.id);
-      const { data: userWebsitesData, error: websitesError } = await supabase
-        .from('user_websites')
-        .select('*')
-        .in('id', creatorIds);
+      const creatorIds = projectsData?.map((project: any) => project.profiles?.id).filter(Boolean) || [];
+      let userWebsitesData = [];
+      
+      if (creatorIds.length > 0) {
+        const { data: websites, error: websitesError } = await supabase
+          .from('user_websites')
+          .select('*')
+          .in('id', creatorIds);
 
-      if (websitesError) {
-        console.error('Error fetching user websites:', websitesError);
+        if (websitesError) {
+          console.error('Error fetching user websites:', websitesError);
+        } else {
+          userWebsitesData = websites || [];
+        }
       }
 
       // Create a map of user websites for quick lookup
       const userWebsitesMap = new Map();
-      if (userWebsitesData) {
-        userWebsitesData.forEach((website: any) => {
-          userWebsitesMap.set(website.id, website);
-        });
-      }
+      userWebsitesData.forEach((website: any) => {
+        userWebsitesMap.set(website.id, website);
+      });
 
       // Transform the data to match our ProjectIdea interface
-      const transformedProjects: ProjectIdea[] = projectsData.map((project: any) => {
+      const transformedProjects: ProjectIdea[] = (projectsData || []).map((project: any) => {
         // Separate tags into programming languages and skills
         const allTags = project.project_tags?.map((pt: any) => pt.tag) || [];
         
@@ -274,7 +296,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         );
 
         // Get user websites data for this creator
-        const userWebsite = userWebsitesMap.get(project.profiles.id);
+        const userWebsite = userWebsitesMap.get(project.profiles?.id);
 
         return {
           id: project.id,
@@ -292,9 +314,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           createdAt: new Date(project.created_at),
           updatedAt: project.updated_at ? new Date(project.updated_at) : undefined,
           createdBy: {
-            id: project.profiles.id,
-            name: project.profiles.name,
-            avatar: project.profiles.avatar_url || 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256'
+            id: project.profiles?.id || 'unknown',
+            name: project.profiles?.name || 'Unknown User',
+            avatar: project.profiles?.avatar_url || 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256'
           },
           views: project.views_count || Math.floor(Math.random() * 500) + 10, // Use database views or fallback to random
           saved: false // TODO: Check if current user has saved
@@ -304,6 +326,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setProjects(transformedProjects);
     } catch (error) {
       console.error('Error in fetchProjects:', error);
+      // Set empty array on error to prevent infinite loading
+      setProjects([]);
     } finally {
       setLoading(false);
     }
@@ -311,6 +335,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Fetch contribution requests for a specific project
   const fetchContributionRequestsForProject = async (projectId: string) => {
+    if (!isSupabaseConfigured()) return;
+
     try {
       const { data: requestsData, error: requestsError } = await supabase
         .from('contribution_requests')
@@ -331,7 +357,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
 
       // Transform the data to match our ContributionRequest interface
-      const transformedRequests: ContributionRequest[] = requestsData.map((request: any) => ({
+      const transformedRequests: ContributionRequest[] = (requestsData || []).map((request: any) => ({
         id: request.id,
         projectId: request.project_id,
         requesterId: request.requester_id,
@@ -342,9 +368,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         responseMessage: request.response_message,
         // Populated fields
         requester: {
-          id: request.profiles.id,
-          name: request.profiles.name,
-          avatar: request.profiles.avatar_url || 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
+          id: request.profiles?.id || 'unknown',
+          name: request.profiles?.name || 'Unknown User',
+          avatar: request.profiles?.avatar_url || 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
           joinedDate: new Date(), // We don't have this data in the query, so use current date
           savedProjects: [],
           postedProjects: []
@@ -370,92 +396,112 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   useEffect(() => {
     const initializeData = async () => {
-      // Check for existing session
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        // Fetch user profile with websites
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
+      try {
+        if (!isSupabaseConfigured()) {
+          console.warn('Supabase not configured, using mock data');
+          const mockUsers = generateMockUsers();
+          setUsers(mockUsers);
+          setProjects([]);
+          setLoading(false);
+          return;
+        }
 
-        if (!profileError && profile) {
-          // Fetch user websites
-          const { data: userWebsite, error: websiteError } = await supabase
-            .from('user_websites')
+        // Check for existing session
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          // Fetch user profile with websites
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
             .select('*')
             .eq('id', session.user.id)
             .single();
 
-          if (websiteError && websiteError.code !== 'PGRST116') {
-            console.error('Error fetching user website:', websiteError);
+          if (!profileError && profile) {
+            // Fetch user websites
+            const { data: userWebsite, error: websiteError } = await supabase
+              .from('user_websites')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+
+            if (websiteError && websiteError.code !== 'PGRST116') {
+              console.error('Error fetching user website:', websiteError);
+            }
+
+            setCurrentUser(createUserFromAuthData(session.user, { ...profile, ...userWebsite }));
+          } else {
+            // If no profile exists, create user from auth data
+            setCurrentUser(createUserFromAuthData(session.user));
           }
-
-          setCurrentUser(createUserFromAuthData(session.user, { ...profile, ...userWebsite }));
-        } else {
-          // If no profile exists, create user from auth data
-          setCurrentUser(createUserFromAuthData(session.user));
         }
-      }
 
-      // Initialize mock users (for demo purposes)
-      const mockUsers = generateMockUsers();
-      setUsers(mockUsers);
-      
-      // Fetch projects from Supabase
-      await fetchProjects();
+        // Initialize mock users (for demo purposes)
+        const mockUsers = generateMockUsers();
+        setUsers(mockUsers);
+        
+        // Fetch projects from Supabase
+        await fetchProjects();
+      } catch (error) {
+        console.error('Error initializing data:', error);
+        setLoading(false);
+      }
     };
 
     initializeData();
 
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        // Fetch user profile with websites
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
+    // Listen for auth state changes only if Supabase is configured
+    if (isSupabaseConfigured()) {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        try {
+          if (event === 'SIGNED_IN' && session?.user) {
+            // Fetch user profile with websites
+            const { data: profile, error: profileError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
 
-        if (!profileError && profile) {
-          // Fetch user websites
-          const { data: userWebsite, error: websiteError } = await supabase
-            .from('user_websites')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
+            if (!profileError && profile) {
+              // Fetch user websites
+              const { data: userWebsite, error: websiteError } = await supabase
+                .from('user_websites')
+                .select('*')
+                .eq('id', session.user.id)
+                .single();
 
-          if (websiteError && websiteError.code !== 'PGRST116') {
-            console.error('Error fetching user website:', websiteError);
+              if (websiteError && websiteError.code !== 'PGRST116') {
+                console.error('Error fetching user website:', websiteError);
+              }
+
+              setCurrentUser(createUserFromAuthData(session.user, { ...profile, ...userWebsite }));
+            } else {
+              // If no profile exists, create user from auth data
+              setCurrentUser(createUserFromAuthData(session.user));
+            }
+
+            // Refresh projects after login to get user-specific data
+            await fetchProjects();
+          } else if (event === 'SIGNED_OUT') {
+            setCurrentUser(null);
+            setNotifications([]);
+            setViewedProjects(new Set());
+            localStorage.removeItem('viewedProjects');
+            setContributionRequests(new Map());
+            await fetchProjects();
           }
-
-          setCurrentUser(createUserFromAuthData(session.user, { ...profile, ...userWebsite }));
-        } else {
-          // If no profile exists, create user from auth data
-          setCurrentUser(createUserFromAuthData(session.user));
+        } catch (error) {
+          console.error('Error handling auth state change:', error);
         }
+      });
 
-        // Refresh projects after login to get user-specific data
-        await fetchProjects();
-      } else if (event === 'SIGNED_OUT') {
-        setCurrentUser(null);
-        setNotifications([]);
-        setViewedProjects(new Set());
-        localStorage.removeItem('viewedProjects');
-        setContributionRequests(new Map());
-        await fetchProjects();
-      }
-    });
-
-    return () => subscription.unsubscribe();
+      return () => subscription.unsubscribe();
+    }
   }, []);
 
   // Fetch notifications when currentUser changes
   useEffect(() => {
-    if (currentUser) {
+    if (currentUser && isSupabaseConfigured()) {
       fetchNotifications();
     } else {
       setNotifications([]);
@@ -463,7 +509,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [currentUser]);
 
   const markNotificationAsRead = async (id: string) => {
-    if (!currentUser) return;
+    if (!currentUser || !isSupabaseConfigured()) return;
 
     try {
       const { error } = await supabase
@@ -491,7 +537,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const markAllNotificationsAsRead = async () => {
-    if (!currentUser) return;
+    if (!currentUser || !isSupabaseConfigured()) return;
 
     try {
       const { error } = await supabase
@@ -515,6 +561,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const login = async (email: string, password: string) => {
+    if (!isSupabaseConfigured()) {
+      throw new Error('Authentication service not configured');
+    }
+
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -529,6 +579,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const signup = async (email: string, password: string, name: string) => {
+    if (!isSupabaseConfigured()) {
+      throw new Error('Authentication service not configured');
+    }
+
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
@@ -550,6 +604,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const signInWithGitHub = async () => {
+    if (!isSupabaseConfigured()) {
+      throw new Error('Authentication service not configured');
+    }
+
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'github',
@@ -566,6 +624,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const logout = async () => {
+    if (!isSupabaseConfigured()) {
+      setCurrentUser(null);
+      return;
+    }
+
     await supabase.auth.signOut();
     // User state will be updated via the auth state change listener
   };
@@ -573,6 +636,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const updateUserProfile = async (updates: Partial<Pick<User, 'name' | 'bio' | 'location' | 'website' | 'github' | 'twitter' | 'avatar'>>) => {
     if (!currentUser) {
       throw new Error('Must be logged in to update profile');
+    }
+
+    if (!isSupabaseConfigured()) {
+      throw new Error('Database service not configured');
     }
 
     try {
@@ -652,6 +719,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       throw new Error('Must be logged in to create a project');
     }
 
+    if (!isSupabaseConfigured()) {
+      throw new Error('Database service not configured');
+    }
+
     try {
       // Insert the main project into the projects table
       const { data: projectInsertData, error: projectError } = await supabase
@@ -715,6 +786,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const updateProject = async (id: string, updates: Partial<Pick<ProjectIdea, 'title' | 'description' | 'difficulty' | 'programmingLanguages' | 'programmingSkills' | 'estimatedTime' | 'maxContributors' | 'showContributorCount' | 'status' | 'showStatus'>>) => {
     if (!currentUser) {
       throw new Error('Must be logged in to update a project');
+    }
+
+    if (!isSupabaseConfigured()) {
+      throw new Error('Database service not configured');
     }
 
     try {
@@ -787,6 +862,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       throw new Error('Must be logged in to delete a project');
     }
 
+    if (!isSupabaseConfigured()) {
+      throw new Error('Database service not configured');
+    }
+
     try {
       // Delete the project (this will cascade delete related records due to foreign key constraints)
       const { error: deleteError } = await supabase
@@ -817,9 +896,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const incrementProjectViews = async (id: string) => {
-    if(!currentUser){
+    if (!currentUser || !isSupabaseConfigured()) {
       return;
     }
+    
     // Check if this project has already been viewed by this user/session
     if (viewedProjects.has(id)) {
       return; // Don't increment if already viewed
@@ -919,6 +999,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return currentUser;
       }
 
+      if (!isSupabaseConfigured()) {
+        // Fallback to mock users for demo purposes
+        return users.find(user => user.id === id);
+      }
+
       // Try to fetch from Supabase database
       const { data: profile, error } = await supabase
         .from('profiles')
@@ -989,6 +1074,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const createContributionRequest = async (projectId: string, message?: string) => {
     if (!currentUser) throw new Error('Must be logged in to create contribution request');
     
+    if (!isSupabaseConfigured()) {
+      throw new Error('Database service not configured');
+    }
+    
     const project = getProjectById(projectId);
     if (!project) throw new Error('Project not found');
 
@@ -1029,6 +1118,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const updateContributionRequestStatus = async (requestId: string, status: 'accepted' | 'declined', responseMessage?: string) => {
     if (!currentUser) {
       throw new Error('Must be logged in to update contribution request status');
+    }
+
+    if (!isSupabaseConfigured()) {
+      throw new Error('Database service not configured');
     }
 
     try {
@@ -1077,7 +1170,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       .map(request => ({
         ...request,
         project: getProjectById(request.projectId),
-        requester: getUserById(request.requesterId) || request.requester
+        requester: request.requester // Already populated from fetch
       }))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   };
