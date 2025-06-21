@@ -34,6 +34,7 @@ interface ProjectContextType {
   currentUser: User | null;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
+  signInWithGitHub: () => Promise<void>;
   logout: () => Promise<void>;
   refreshProjects: () => Promise<void>;
 }
@@ -74,6 +75,43 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     localStorage.setItem('viewedProjects', JSON.stringify(Array.from(viewedProjects)));
   }, [viewedProjects]);
+
+  // Helper function to create user profile from auth user data
+  const createUserFromAuthData = (authUser: any, profileData?: any) => {
+    // Extract social links from URLs
+    const extractUsernameFromUrl = (url: string | null, platform: string): string | undefined => {
+      if (!url) return undefined;
+      
+      try {
+        const urlObj = new URL(url);
+        const pathname = urlObj.pathname;
+        
+        if (platform === 'github' && urlObj.hostname === 'github.com') {
+          return pathname.split('/')[1] || undefined;
+        } else if (platform === 'twitter' && (urlObj.hostname === 'twitter.com' || urlObj.hostname === 'x.com')) {
+          return pathname.split('/')[1] || undefined;
+        }
+        
+        return url; // Return full URL if not a recognized pattern
+      } catch {
+        return url; // Return as-is if not a valid URL
+      }
+    };
+
+    return {
+      id: authUser.id,
+      name: profileData?.name || authUser.user_metadata?.name || authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'User',
+      avatar: profileData?.avatar_url || authUser.user_metadata?.avatar_url || 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
+      bio: profileData?.bio,
+      location: profileData?.location,
+      website: profileData?.website_url,
+      github: extractUsernameFromUrl(profileData?.github_url, 'github') || authUser.user_metadata?.user_name,
+      twitter: extractUsernameFromUrl(profileData?.twitter_url, 'twitter'),
+      joinedDate: new Date(profileData?.created_at || authUser.created_at),
+      savedProjects: [],
+      postedProjects: []
+    };
+  };
 
   // Fetch notifications from Supabase
   const fetchNotifications = async () => {
@@ -353,39 +391,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
             console.error('Error fetching user website:', websiteError);
           }
 
-          // Extract social links from URLs
-          const extractUsernameFromUrl = (url: string | null, platform: string): string | undefined => {
-            if (!url) return undefined;
-            
-            try {
-              const urlObj = new URL(url);
-              const pathname = urlObj.pathname;
-              
-              if (platform === 'github' && urlObj.hostname === 'github.com') {
-                return pathname.split('/')[1] || undefined;
-              } else if (platform === 'twitter' && (urlObj.hostname === 'twitter.com' || urlObj.hostname === 'x.com')) {
-                return pathname.split('/')[1] || undefined;
-              }
-              
-              return url; // Return full URL if not a recognized pattern
-            } catch {
-              return url; // Return as-is if not a valid URL
-            }
-          };
-
-          setCurrentUser({
-            id: profile.id,
-            name: profile.name,
-            avatar: profile.avatar_url || 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
-            bio: profile.bio,
-            location: profile.location,
-            website: userWebsite?.website_url,
-            github: extractUsernameFromUrl(userWebsite?.github_url, 'github'),
-            twitter: extractUsernameFromUrl(userWebsite?.twitter_url, 'twitter'),
-            joinedDate: new Date(profile.created_at),
-            savedProjects: [],
-            postedProjects: []
-          });
+          setCurrentUser(createUserFromAuthData(session.user, { ...profile, ...userWebsite }));
+        } else {
+          // If no profile exists, create user from auth data
+          setCurrentUser(createUserFromAuthData(session.user));
         }
       }
 
@@ -398,6 +407,48 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     initializeData();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        // Fetch user profile with websites
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (!profileError && profile) {
+          // Fetch user websites
+          const { data: userWebsite, error: websiteError } = await supabase
+            .from('user_websites')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          if (websiteError && websiteError.code !== 'PGRST116') {
+            console.error('Error fetching user website:', websiteError);
+          }
+
+          setCurrentUser(createUserFromAuthData(session.user, { ...profile, ...userWebsite }));
+        } else {
+          // If no profile exists, create user from auth data
+          setCurrentUser(createUserFromAuthData(session.user));
+        }
+
+        // Refresh projects after login to get user-specific data
+        await fetchProjects();
+      } else if (event === 'SIGNED_OUT') {
+        setCurrentUser(null);
+        setNotifications([]);
+        setViewedProjects(new Set());
+        localStorage.removeItem('viewedProjects');
+        setContributionRequests(new Map());
+        await fetchProjects();
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   // Fetch notifications when currentUser changes
@@ -469,63 +520,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       });
       
       if (error) throw error;
-
-      // Fetch user profile after successful login
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', (await supabase.auth.getUser()).data.user?.id)
-        .single();
-
-      if (profileError) throw profileError;
-
-      // Fetch user websites
-      const { data: userWebsite, error: websiteError } = await supabase
-        .from('user_websites')
-        .select('*')
-        .eq('id', profile.id)
-        .single();
-
-      if (websiteError && websiteError.code !== 'PGRST116') {
-        console.error('Error fetching user website:', websiteError);
-      }
-
-      // Extract social links from URLs
-      const extractUsernameFromUrl = (url: string | null, platform: string): string | undefined => {
-        if (!url) return undefined;
-        
-        try {
-          const urlObj = new URL(url);
-          const pathname = urlObj.pathname;
-          
-          if (platform === 'github' && urlObj.hostname === 'github.com') {
-            return pathname.split('/')[1] || undefined;
-          } else if (platform === 'twitter' && (urlObj.hostname === 'twitter.com' || urlObj.hostname === 'x.com')) {
-            return pathname.split('/')[1] || undefined;
-          }
-          
-          return url; // Return full URL if not a recognized pattern
-        } catch {
-          return url; // Return as-is if not a valid URL
-        }
-      };
-
-      setCurrentUser({
-        id: profile.id,
-        name: profile.name,
-        avatar: profile.avatar_url || 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
-        bio: profile.bio,
-        location: profile.location,
-        website: userWebsite?.website_url,
-        github: extractUsernameFromUrl(userWebsite?.github_url, 'github'),
-        twitter: extractUsernameFromUrl(userWebsite?.twitter_url, 'twitter'),
-        joinedDate: new Date(profile.created_at),
-        savedProjects: [],
-        postedProjects: []
-      });
-
-      // Refresh projects after login to get user-specific data
-      await fetchProjects();
+      // User state will be updated via the auth state change listener
     } catch (error) {
       throw error;
     }
@@ -546,18 +541,23 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (authError) throw authError;
       if (!authData.user) throw new Error('No user data returned');
 
-      // Set the current user
-      setCurrentUser({
-        id: authData.user.id,
-        name: authData.user.user_metadata.name,
-        avatar: 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
-        joinedDate: new Date(),
-        savedProjects: [],
-        postedProjects: []
-      });
+      // User state will be updated via the auth state change listener
+    } catch (error) {
+      throw error;
+    }
+  };
 
-      // Refresh projects after signup
-      await fetchProjects();
+  const signInWithGitHub = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'github',
+        options: {
+          redirectTo: `${window.location.origin}/home`
+        }
+      });
+      
+      if (error) throw error;
+      // User state will be updated via the auth state change listener
     } catch (error) {
       throw error;
     }
@@ -565,15 +565,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const logout = async () => {
     await supabase.auth.signOut();
-    setCurrentUser(null);
-    setNotifications([]);
-    // Clear viewed projects on logout
-    setViewedProjects(new Set());
-    localStorage.removeItem('viewedProjects');
-    // Clear contribution requests cache
-    setContributionRequests(new Map());
-    // Refresh projects after logout to remove user-specific data
-    await fetchProjects();
+    // User state will be updated via the auth state change listener
   };
 
   const updateUserProfile = async (updates: Partial<Pick<User, 'name' | 'bio' | 'location' | 'website' | 'github' | 'twitter' | 'avatar'>>) => {
@@ -1127,6 +1119,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         currentUser,
         login,
         signup,
+        signInWithGitHub,
         logout,
         markNotificationAsRead,
         markAllNotificationsAsRead,
