@@ -5,12 +5,18 @@ import Input from '../components/ui/Input';
 import Textarea from '../components/ui/Textarea';
 import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
-import { XCircleIcon, PlusCircleIcon, ArrowLeftIcon, SaveIcon, UsersIcon, EyeIcon, EyeOffIcon } from 'lucide-react';
+import { XCircleIcon, PlusCircleIcon, ArrowLeftIcon, SaveIcon, UsersIcon, EyeIcon, EyeOffIcon, ActivityIcon } from 'lucide-react';
 
 const difficultyOptions = [
   { value: 'beginner', label: 'Beginner' },
   { value: 'intermediate', label: 'Intermediate' },
   { value: 'advanced', label: 'Advanced' }
+];
+
+const statusOptions = [
+  { value: 'recruiting', label: 'Recruiting Contributors' },
+  { value: 'working', label: 'Currently Working' },
+  { value: 'completed', label: 'Completed' }
 ];
 
 const contributorOptions = [
@@ -57,6 +63,8 @@ const EditProjectPage: React.FC = () => {
     estimatedTime: '',
     maxContributors: '',
     showContributorCount: true,
+    status: 'recruiting',
+    showStatus: true,
     programmingLanguages: [] as string[],
     programmingSkills: [] as string[],
     currentLanguage: '',
@@ -67,6 +75,7 @@ const EditProjectPage: React.FC = () => {
     title: '',
     description: '',
     difficulty: '',
+    status: '',
     programmingLanguages: '',
     programmingSkills: ''
   });
@@ -82,6 +91,8 @@ const EditProjectPage: React.FC = () => {
         estimatedTime: project.estimatedTime || '',
         maxContributors: project.maxContributors ? project.maxContributors.toString() : '',
         showContributorCount: project.showContributorCount !== false, // Default to true if undefined
+        status: project.status || 'recruiting',
+        showStatus: project.showStatus !== false, // Default to true if undefined
         programmingLanguages: [...project.programmingLanguages],
         programmingSkills: [...project.programmingSkills],
         currentLanguage: '',
@@ -229,6 +240,7 @@ const EditProjectPage: React.FC = () => {
       title: '',
       description: '',
       difficulty: '',
+      status: '',
       programmingLanguages: '',
       programmingSkills: ''
     };
@@ -250,6 +262,11 @@ const EditProjectPage: React.FC = () => {
     
     if (!formData.difficulty) {
       newErrors.difficulty = 'Please select a difficulty level';
+      isValid = false;
+    }
+
+    if (!formData.status) {
+      newErrors.status = 'Please select a project status';
       isValid = false;
     }
     
@@ -284,6 +301,8 @@ const EditProjectPage: React.FC = () => {
         estimatedTime: formData.estimatedTime || undefined,
         maxContributors: formData.maxContributors ? parseInt(formData.maxContributors) : undefined,
         showContributorCount: formData.showContributorCount,
+        status: formData.status as 'recruiting' | 'working' | 'completed',
+        showStatus: formData.showStatus,
       });
       
       navigate(`/project/${project.id}`);
@@ -335,7 +354,7 @@ const EditProjectPage: React.FC = () => {
               rows={6}
             />
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Select
                 id="difficulty"
                 name="difficulty"
@@ -345,6 +364,18 @@ const EditProjectPage: React.FC = () => {
                 onChange={handleInputChange}
                 placeholder="Select difficulty"
                 error={errors.difficulty}
+                required
+              />
+
+              <Select
+                id="status"
+                name="status"
+                label="Project Status"
+                options={statusOptions}
+                value={formData.status}
+                onChange={handleInputChange}
+                placeholder="Select status"
+                error={errors.status}
                 required
               />
               
@@ -368,15 +399,54 @@ const EditProjectPage: React.FC = () => {
               />
             </div>
 
+            {/* Project Status Visibility Toggle */}
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start">
+                  <ActivityIcon size={18} className="text-blue-600 mr-2 mt-0.5" />
+                  <div>
+                    <h4 className="text-sm font-medium text-blue-900">Project Status Settings</h4>
+                    <p className="text-sm text-blue-700 mt-1">
+                      The project status helps others understand the current phase of your project. 
+                      You can choose to show or hide this information from other users.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-3 flex items-center">
+                <input
+                  type="checkbox"
+                  id="showStatus"
+                  name="showStatus"
+                  checked={formData.showStatus}
+                  onChange={handleCheckboxChange}
+                  disabled={isLoading}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label htmlFor="showStatus" className="ml-2 text-sm text-blue-700 flex items-center">
+                  {formData.showStatus ? (
+                    <EyeIcon size={16} className="mr-1" />
+                  ) : (
+                    <EyeOffIcon size={16} className="mr-1" />
+                  )}
+                  {formData.showStatus 
+                    ? 'Show project status to other users' 
+                    : 'Hide project status from other users'
+                  }
+                </label>
+              </div>
+            </div>
+
             {/* Contributor Count Visibility Toggle */}
             {formData.maxContributors && (
-              <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+              <div className="bg-green-50 border border-green-200 rounded-md p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start">
-                    <UsersIcon size={18} className="text-blue-600 mr-2 mt-0.5" />
+                    <UsersIcon size={18} className="text-green-600 mr-2 mt-0.5" />
                     <div>
-                      <h4 className="text-sm font-medium text-blue-900">Contributor Settings</h4>
-                      <p className="text-sm text-blue-700 mt-1">
+                      <h4 className="text-sm font-medium text-green-900">Contributor Settings</h4>
+                      <p className="text-sm text-green-700 mt-1">
                         {formData.maxContributors === '0' 
                           ? 'You\'ve set no limit on contributors. Anyone can request to contribute to this project.'
                           : `You're looking for up to ${formData.maxContributors} contributor${parseInt(formData.maxContributors) > 1 ? 's' : ''} for this project. Once this limit is reached, new contribution requests will be disabled.`
@@ -394,9 +464,9 @@ const EditProjectPage: React.FC = () => {
                     checked={formData.showContributorCount}
                     onChange={handleCheckboxChange}
                     disabled={isLoading}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
                   />
-                  <label htmlFor="showContributorCount" className="ml-2 text-sm text-blue-700 flex items-center">
+                  <label htmlFor="showContributorCount" className="ml-2 text-sm text-green-700 flex items-center">
                     {formData.showContributorCount ? (
                       <EyeIcon size={16} className="mr-1" />
                     ) : (

@@ -6,7 +6,7 @@ import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import Textarea from '../components/ui/Textarea';
 import ProjectCard from '../components/ProjectCard';
-import { EyeIcon, BookmarkIcon, ClockIcon, CodeIcon, CpuIcon, ArrowLeftIcon, UserIcon, EditIcon, MailIcon, UsersIcon, MessageSquareIcon, SendIcon, TrashIcon, AlertTriangleIcon } from 'lucide-react';
+import { EyeIcon, BookmarkIcon, ClockIcon, CodeIcon, CpuIcon, ArrowLeftIcon, UserIcon, EditIcon, MailIcon, UsersIcon, MessageSquareIcon, SendIcon, TrashIcon, AlertTriangleIcon, ActivityIcon } from 'lucide-react';
 
 const getDifficultyColor = (difficulty: string): string => {
   switch (difficulty) {
@@ -18,6 +18,32 @@ const getDifficultyColor = (difficulty: string): string => {
       return 'danger';
     default:
       return 'default';
+  }
+};
+
+const getStatusColor = (status: string): string => {
+  switch (status) {
+    case 'recruiting':
+      return 'primary';
+    case 'working':
+      return 'warning';
+    case 'completed':
+      return 'success';
+    default:
+      return 'default';
+  }
+};
+
+const getStatusLabel = (status: string): string => {
+  switch (status) {
+    case 'recruiting':
+      return 'Recruiting Contributors';
+    case 'working':
+      return 'Currently Working';
+    case 'completed':
+      return 'Completed';
+    default:
+      return status;
   }
 };
 
@@ -120,6 +146,9 @@ const ProjectDetailPage: React.FC = () => {
   // Check if we should show contributor info (only if project creator allows it or if it's the creator viewing)
   const shouldShowContributorInfo = project.showContributorCount !== false || isOwner;
 
+  // Check if we should show status (only if project creator allows it or if it's the creator viewing)
+  const shouldShowStatus = project.showStatus !== false || isOwner;
+
   // Determine the correct profile link for the project creator
   const getCreatorProfileLink = () => {
     if (!currentUser) {
@@ -177,6 +206,10 @@ const ProjectDetailPage: React.FC = () => {
       setIsDeleting(false);
     }
   };
+
+  // Check if contribution requests should be disabled based on project status
+  const shouldDisableContributions = project.status === 'completed' || 
+    (project.status === 'working' && isContributorLimitReached);
   
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -201,6 +234,17 @@ const ProjectDetailPage: React.FC = () => {
                   >
                     {project.difficulty}
                   </Badge>
+                  {shouldShowStatus && project.status && (
+                    <Badge 
+                      variant={getStatusColor(project.status)}
+                      size="lg"
+                    >
+                      <span className="flex items-center">
+                        <ActivityIcon size={16} className="mr-1" />
+                        {getStatusLabel(project.status)}
+                      </span>
+                    </Badge>
+                  )}
                   {isUpdated && (
                     <Badge variant="primary" size="lg">
                       Updated
@@ -355,7 +399,7 @@ const ProjectDetailPage: React.FC = () => {
                 </Button>
 
                 {/* Request Contribution Button */}
-                {currentUser && !isOwner && !hasRequestedContribution && !isContributorLimitReached && (
+                {currentUser && !isOwner && !hasRequestedContribution && !shouldDisableContributions && (
                   <Button
                     variant="outline"
                     icon={<MailIcon size={18} />}
@@ -377,14 +421,14 @@ const ProjectDetailPage: React.FC = () => {
                   </Button>
                 )}
 
-                {/* Show if contributor limit reached */}
-                {!isOwner && isContributorLimitReached && shouldShowContributorInfo && (
+                {/* Show if contributor limit reached or project completed */}
+                {!isOwner && shouldDisableContributions && (
                   <Button
                     variant="outline"
                     icon={<UsersIcon size={18} />}
                     disabled
                   >
-                    Contributors Full
+                    {project.status === 'completed' ? 'Project Completed' : 'Contributors Full'}
                   </Button>
                 )}
               </div>

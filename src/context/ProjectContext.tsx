@@ -15,7 +15,7 @@ interface ProjectContextType {
   contributionRequests: ContributionRequest[];
   loading: boolean;
   addProject: (project: Omit<ProjectIdea, 'id' | 'createdAt' | 'views' | 'createdBy'>) => Promise<string>;
-  updateProject: (id: string, updates: Partial<Pick<ProjectIdea, 'title' | 'description' | 'difficulty' | 'programmingLanguages' | 'programmingSkills' | 'estimatedTime' | 'maxContributors' | 'showContributorCount'>>) => Promise<void>;
+  updateProject: (id: string, updates: Partial<Pick<ProjectIdea, 'title' | 'description' | 'difficulty' | 'programmingLanguages' | 'programmingSkills' | 'estimatedTime' | 'maxContributors' | 'showContributorCount' | 'status' | 'showStatus'>>) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
   updateUserProfile: (updates: Partial<Pick<User, 'name' | 'bio' | 'location' | 'website' | 'github' | 'twitter' | 'avatar'>>) => Promise<void>;
   incrementProjectViews: (id: string) => Promise<void>;
@@ -287,6 +287,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           maxContributors: project.max_contributors,
           currentContributors: project.current_contributors || 0,
           showContributorCount: project.show_contributor_count !== false, // Default to true if null
+          status: project.status as 'recruiting' | 'working' | 'completed' || 'recruiting',
+          showStatus: project.show_status !== false, // Default to true if null
           createdAt: new Date(project.created_at),
           updatedAt: project.updated_at ? new Date(project.updated_at) : undefined,
           createdBy: {
@@ -661,6 +663,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           estimated_time: projectData.estimatedTime || null,
           max_contributors: projectData.maxContributors || null,
           show_contributor_count: projectData.showContributorCount !== false, // Default to true
+          status: projectData.status || 'recruiting',
+          show_status: projectData.showStatus !== false, // Default to true
           created_by: currentUser.id
         })
         .select()
@@ -708,7 +712,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  const updateProject = async (id: string, updates: Partial<Pick<ProjectIdea, 'title' | 'description' | 'difficulty' | 'programmingLanguages' | 'programmingSkills' | 'estimatedTime' | 'maxContributors' | 'showContributorCount'>>) => {
+  const updateProject = async (id: string, updates: Partial<Pick<ProjectIdea, 'title' | 'description' | 'difficulty' | 'programmingLanguages' | 'programmingSkills' | 'estimatedTime' | 'maxContributors' | 'showContributorCount' | 'status' | 'showStatus'>>) => {
     if (!currentUser) {
       throw new Error('Must be logged in to update a project');
     }
@@ -723,7 +727,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           difficulty: updates.difficulty,
           estimated_time: updates.estimatedTime || null,
           max_contributors: updates.maxContributors || null,
-          show_contributor_count: updates.showContributorCount !== false // Default to true
+          show_contributor_count: updates.showContributorCount !== false, // Default to true
+          status: updates.status,
+          show_status: updates.showStatus !== false // Default to true
         })
         .eq('id', id)
         .eq('created_by', currentUser.id); // Ensure user can only update their own projects

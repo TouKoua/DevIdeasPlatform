@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ProjectIdea } from '../types';
 import Badge from './ui/Badge';
-import { BookmarkIcon, EyeIcon, ClockIcon, CodeIcon, CpuIcon, UsersIcon } from 'lucide-react';
+import { BookmarkIcon, EyeIcon, ClockIcon, CodeIcon, CpuIcon, UsersIcon, ActivityIcon } from 'lucide-react';
 import { useProjects } from '../context/ProjectContext';
 
 interface ProjectCardProps {
@@ -19,6 +19,32 @@ const getDifficultyColor = (difficulty: string): string => {
       return 'danger';
     default:
       return 'default';
+  }
+};
+
+const getStatusColor = (status: string): string => {
+  switch (status) {
+    case 'recruiting':
+      return 'primary';
+    case 'working':
+      return 'warning';
+    case 'completed':
+      return 'success';
+    default:
+      return 'default';
+  }
+};
+
+const getStatusLabel = (status: string): string => {
+  switch (status) {
+    case 'recruiting':
+      return 'Recruiting';
+    case 'working':
+      return 'In Progress';
+    case 'completed':
+      return 'Completed';
+    default:
+      return status;
   }
 };
 
@@ -61,6 +87,10 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
   // Check if we should show contributor info (only if project creator allows it or if it's the creator viewing)
   const shouldShowContributorInfo = project.showContributorCount !== false || 
     (currentUser && currentUser.id === project.createdBy.id);
+
+  // Check if we should show status (only if project creator allows it or if it's the creator viewing)
+  const shouldShowStatus = project.showStatus !== false || 
+    (currentUser && currentUser.id === project.createdBy.id);
   
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 transition-all duration-200 hover:shadow-lg hover:translate-y-[-2px]">
@@ -74,6 +104,17 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
             >
               {project.difficulty}
             </Badge>
+            {shouldShowStatus && project.status && (
+              <Badge 
+                variant={getStatusColor(project.status)}
+                size="sm"
+              >
+                <span className="flex items-center">
+                  <ActivityIcon size={12} className="mr-1" />
+                  {getStatusLabel(project.status)}
+                </span>
+              </Badge>
+            )}
             {isUpdated && (
               <Badge variant="primary" size="sm">
                 Updated

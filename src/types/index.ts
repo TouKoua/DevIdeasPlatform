@@ -18,6 +18,8 @@ export interface ProjectIdea {
   maxContributors?: number;
   currentContributors?: number;
   showContributorCount?: boolean;
+  status?: 'recruiting' | 'working' | 'completed';
+  showStatus?: boolean;
 }
 
 export interface User {
