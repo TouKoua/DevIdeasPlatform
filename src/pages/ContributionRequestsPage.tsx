@@ -64,7 +64,7 @@ const ContributionRequestsPage: React.FC = () => {
         <p className="text-gray-600 mb-6">You can only manage contribution requests for projects you created.</p>
         <Button 
           variant="primary" 
-          onClick={() => navigate(`/project/${project.id}`)}
+          onClick={() => navigate(`/project/${project.id}`, { replace: true })}
           icon={<ArrowLeftIcon size={18} />}
         >
           Back to Project
@@ -149,7 +149,7 @@ const ContributionRequestsPage: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <button 
-        onClick={() => navigate(`/project/${project.id}`)}
+        onClick={() => navigate(`/project/${project.id}`, { replace: true })}
         className="flex items-center text-gray-600 hover:text-indigo-600 mb-6 transition-colors"
       >
         <ArrowLeftIcon size={18} className="mr-2" />
