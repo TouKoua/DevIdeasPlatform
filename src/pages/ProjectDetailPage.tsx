@@ -214,7 +214,7 @@ const ProjectDetailPage: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <button 
-        onClick={() => navigate('/home')}
+        onClick={() => navigate(-1)}
         className="flex items-center text-gray-600 hover:text-indigo-600 mb-6 transition-colors"
       >
         <ArrowLeftIcon size={18} className="mr-2" />
