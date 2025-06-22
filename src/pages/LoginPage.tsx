@@ -7,14 +7,14 @@ import { LogInIcon, GithubIcon } from 'lucide-react';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { login, signInWithGitHub } = useProjects();
+  const { login } = useProjects(); // Removed signInWithGitHub
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isGitHubLoading, setIsGitHubLoading] = useState(false);
+  // const [isGitHubLoading, setIsGitHubLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,18 +31,18 @@ const LoginPage: React.FC = () => {
     }
   };
 
-  const handleGitHubSignIn = async () => {
-    setError('');
-    setIsGitHubLoading(true);
+  // const handleGitHubSignIn = async () => {
+  //   setError('');
+  //   setIsGitHubLoading(true);
 
-    try {
-      await signInWithGitHub();
-      // Navigation will be handled by the OAuth redirect
-    } catch (err: any) {
-      setError(err.message || 'Failed to sign in with GitHub');
-      setIsGitHubLoading(false);
-    }
-  };
+  //   try {
+  //     await signInWithGitHub();
+  //     // Navigation will be handled by the OAuth redirect
+  //   } catch (err: any) {
+  //     setError(err.message || 'Failed to sign in with GitHub');
+  //     setIsGitHubLoading(false);
+  //   }
+  // };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
@@ -66,8 +66,8 @@ const LoginPage: React.FC = () => {
             </div>
           )}
 
-          {/* GitHub Sign In */}
-          <div className="mb-6">
+          {/* GitHub Sign In - COMMENTED OUT */}
+          {/* <div className="mb-6">
             <Button
               type="button"
               variant="outline"
@@ -79,17 +79,17 @@ const LoginPage: React.FC = () => {
             >
               {isGitHubLoading ? 'Signing in...' : 'Continue with GitHub'}
             </Button>
-          </div>
+          </div> */}
 
-          {/* Divider */}
-          <div className="relative mb-6">
+          {/* Divider - COMMENTED OUT */}
+          {/* <div className="relative mb-6">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-300" />
             </div>
             <div className="relative flex justify-center text-sm">
               <span className="px-2 bg-white text-gray-500">Or continue with email</span>
             </div>
-          </div>
+          </div> */}
 
           {/* Email/Password Form */}
           <form className="space-y-6" onSubmit={handleSubmit}>
@@ -101,7 +101,7 @@ const LoginPage: React.FC = () => {
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               required
-              disabled={isLoading || isGitHubLoading}
+              disabled={isLoading}
             />
 
             <Input
@@ -112,7 +112,7 @@ const LoginPage: React.FC = () => {
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               required
-              disabled={isLoading || isGitHubLoading}
+              disabled={isLoading}
             />
 
             <Button
@@ -121,7 +121,7 @@ const LoginPage: React.FC = () => {
               fullWidth
               size="lg"
               icon={<LogInIcon size={20} />}
-              disabled={isLoading || isGitHubLoading}
+              disabled={isLoading}
             >
               {isLoading ? 'Signing in...' : 'Sign in'}
             </Button>

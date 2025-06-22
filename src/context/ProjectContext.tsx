@@ -34,7 +34,7 @@ interface ProjectContextType {
   currentUser: User | null;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
-  signInWithGitHub: () => Promise<void>;
+  // signInWithGitHub: () => Promise<void>; // COMMENTED OUT
   logout: () => Promise<void>;
   refreshProjects: () => Promise<void>;
 }
@@ -605,25 +605,25 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  const signInWithGitHub = async () => {
-    if (!isSupabaseConfigured()) {
-      throw new Error('Authentication service not configured');
-    }
+  // const signInWithGitHub = async () => {
+  //   if (!isSupabaseConfigured()) {
+  //     throw new Error('Authentication service not configured');
+  //   }
 
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'github',
-        options: {
-          redirectTo: `${window.location.origin}/home`
-        }
-      });
+  //   try {
+  //     const { error } = await supabase.auth.signInWithOAuth({
+  //       provider: 'github',
+  //       options: {
+  //         redirectTo: `${window.location.origin}/home`
+  //       }
+  //     });
       
-      if (error) throw error;
-      // User state will be updated via the auth state change listener
-    } catch (error) {
-      throw error;
-    }
-  };
+  //     if (error) throw error;
+  //     // User state will be updated via the auth state change listener
+  //   } catch (error) {
+  //     throw error;
+  //   }
+  // };
 
   const logout = async () => {
     if (!isSupabaseConfigured()) {
@@ -1220,7 +1220,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         currentUser,
         login,
         signup,
-        signInWithGitHub,
+        // signInWithGitHub, // COMMENTED OUT
         logout,
         markNotificationAsRead,
         markAllNotificationsAsRead,
