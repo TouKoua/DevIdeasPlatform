@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ProjectIdea, User, Notification, ContributionRequest } from '../types';
-import { generateMockUsers } from '../utils/mockData';
+import { generateMockUsers, generateMockProjects } from '../utils/mockData';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -224,8 +224,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         console.warn('Supabase not configured, using mock data');
         // Use mock data if Supabase is not configured
         const mockUsers = generateMockUsers();
+        const mockProjects = generateMockProjects();
         setUsers(mockUsers);
-        setProjects([]);
+        setProjects(mockProjects);
         return;
       }
       
@@ -400,8 +401,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (!isSupabaseConfigured()) {
           console.warn('Supabase not configured, using mock data');
           const mockUsers = generateMockUsers();
+          const mockProjects = generateMockProjects();
           setUsers(mockUsers);
-          setProjects([]);
+          setProjects(mockProjects);
           setLoading(false);
           return;
         }
