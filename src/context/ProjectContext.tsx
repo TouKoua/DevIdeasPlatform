@@ -485,7 +485,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
             // Refresh projects after login to get user-specific data
             await fetchProjects();
           } else if (event === 'SIGNED_OUT') {
+            console.log('User signed out, currentUser before setting to null:', currentUser);
             setCurrentUser(null);
+            console.log('User signed out, currentUser after setting to null:', null);
             setNotifications([]);
             setViewedProjects(new Set());
             localStorage.removeItem('viewedProjects');
