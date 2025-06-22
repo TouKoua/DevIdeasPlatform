@@ -82,7 +82,7 @@ const ProjectDetailPage: React.FC = () => {
     if (referrer && referrer.startsWith(currentOrigin)) {
       const referrerPath = new URL(referrer).pathname;
       
-      if (referrerPath === '/home' || referrerPath === '/') {
+      if (referrerPath === '/home') {
         setBackButtonText('Back to Home');
         console.log("/home");
       } else if (referrerPath === '/profile') {
