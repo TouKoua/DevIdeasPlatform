@@ -481,7 +481,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
               // If no profile exists, create user from auth data
               setCurrentUser(createUserFromAuthData(session.user));
             }
-            console.log(currentUser)
+            console.log('Current user set:', createUserFromAuthData(session.user, { ...profile, ...userWebsite }));
             // Refresh projects after login to get user-specific data
             await fetchProjects();
           } else if (event === 'SIGNED_OUT') {
