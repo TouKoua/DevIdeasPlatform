@@ -84,12 +84,16 @@ const ProjectDetailPage: React.FC = () => {
       
       if (referrerPath === '/home' || referrerPath === '/') {
         setBackButtonText('Back to Home');
+        console.log("/home");
       } else if (referrerPath === '/profile') {
         setBackButtonText('Back to Profile');
+        console.log("/profile");
       } else if (referrerPath.startsWith('/search')) {
         setBackButtonText('Back to Search');
+        console.log("/search");
       } else if (referrerPath.startsWith('/public-profile/')) {
         setBackButtonText('Back to Profile');
+        console.log("/public");
       } else {
         setBackButtonText('Back');
       }
