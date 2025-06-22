@@ -458,7 +458,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         try {
           if (event === 'SIGNED_IN' && session?.user) {
             // Fetch user profile with websites
-            console.log(currentUser)
             const { data: profile, error: profileError } = await supabase
               .from('profiles')
               .select('*')
@@ -482,7 +481,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
               // If no profile exists, create user from auth data
               setCurrentUser(createUserFromAuthData(session.user));
             }
-
+            console.log(currentUser)
             // Refresh projects after login to get user-specific data
             await fetchProjects();
           } else if (event === 'SIGNED_OUT') {
