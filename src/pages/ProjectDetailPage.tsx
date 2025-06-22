@@ -76,7 +76,7 @@ const ProjectDetailPage: React.FC = () => {
   
   // Determine what the back button should say and where it goes
   useEffect(() => {
-    const referrer = document.referrer;
+    const referrer = window.history.state.prevUrl;
     const currentOrigin = window.location.origin;
     
     if (referrer && referrer.startsWith(currentOrigin)) {
