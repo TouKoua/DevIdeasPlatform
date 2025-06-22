@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useProjects } from '../context/ProjectContext';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
@@ -61,6 +61,7 @@ const ProjectDetailPage: React.FC = () => {
     deleteProject
   } = useProjects();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isRequestingContribution, setIsRequestingContribution] = useState(false);
   const [contributionRequestSent, setContributionRequestSent] = useState(false);
   const [showContributionForm, setShowContributionForm] = useState(false);
@@ -68,9 +69,48 @@ const ProjectDetailPage: React.FC = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [similarProjects, setSimilarProjects] = useState<any[]>([]);
+  const [backButtonText, setBackButtonText] = useState('Back');
   
   const project = getProjectById(id || '');
   const contributionRequests = getContributionRequestsForProject(id || '');
+  
+  // Determine what the back button should say and where it goes
+  useEffect(() => {
+    const referrer = document.referrer;
+    const currentOrigin = window.location.origin;
+    
+    if (referrer && referrer.startsWith(currentOrigin)) {
+      const referrerPath = new URL(referrer).pathname;
+      
+      if (referrerPath === '/home' || referrerPath === '/') {
+        setBackButtonText('Back to Home');
+      } else if (referrerPath === '/profile') {
+        setBackButtonText('Back to Profile');
+      } else if (referrerPath.startsWith('/search')) {
+        setBackButtonText('Back to Search');
+      } else if (referrerPath.startsWith('/public-profile/')) {
+        setBackButtonText('Back to Profile');
+      } else {
+        setBackButtonText('Back');
+      }
+    } else {
+      // If no referrer or external referrer, default to home
+      setBackButtonText('Back to Home');
+    }
+  }, []);
+
+  const handleBackClick = () => {
+    const referrer = document.referrer;
+    const currentOrigin = window.location.origin;
+    
+    // Check if there's a valid referrer from our site
+    if (referrer && referrer.startsWith(currentOrigin)) {
+      navigate(-1);
+    } else {
+      // Fallback to home if no referrer or external referrer
+      navigate('/home');
+    }
+  };
   
   // Fetch contribution requests when the component mounts or project ID changes
   useEffect(() => {
@@ -214,11 +254,11 @@ const ProjectDetailPage: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <button 
-        onClick={() => navigate(-1)}
+        onClick={handleBackClick}
         className="flex items-center text-gray-600 hover:text-indigo-600 mb-6 transition-colors"
       >
         <ArrowLeftIcon size={18} className="mr-2" />
-        Back to Home
+        {backButtonText}
       </button>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
