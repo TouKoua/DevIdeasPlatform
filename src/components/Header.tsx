@@ -138,9 +138,6 @@ const Header: React.FC = () => {
               <Link to="/home" className="text-gray-700 hover:text-indigo-600 px-3 py-2 text-sm font-medium">
                 Home
               </Link>
-              <Link to="/" className="text-gray-700 hover:text-indigo-600 px-3 py-2 text-sm font-medium">
-                About
-              </Link>
             </nav>
           </div>
           
