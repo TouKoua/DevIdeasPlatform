@@ -3,10 +3,18 @@ import { ProjectIdea, User, Notification, ContributionRequest } from '../types';
 import { generateMockUsers } from '../utils/mockData';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL || '',
-  import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-);
+let supabase;
+try {
+  supabase = createClient(
+    import.meta.env.VITE_SUPABASE_URL || '',
+    import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+  );
+  console.log('ProjectContext: Supabase client initialized successfully.'); // New log
+} catch (error) {
+  console.error('ProjectContext: Error initializing Supabase client:', error); // New error catch
+  // You might want to handle this error more gracefully in a production app
+  // For now, logging it is sufficient to identify the problem.
+}
 
 interface ProjectContextType {
   projects: ProjectIdea[];
