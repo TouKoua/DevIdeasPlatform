@@ -167,6 +167,41 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  // Helper function to wait for session to be fully cleared
+  const waitForSessionClear = async (maxAttempts = 10, delayMs = 100) => {
+    console.log('ProjectContext: waitForSessionClear - Starting session verification...');
+    
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error(`ProjectContext: waitForSessionClear - Error checking session (attempt ${attempt}):`, error);
+          // Continue trying even if there's an error
+        } else if (session === null) {
+          console.log(`ProjectContext: waitForSessionClear - Session confirmed as null after ${attempt} attempts`);
+          return true;
+        } else {
+          console.log(`ProjectContext: waitForSessionClear - Session still exists (attempt ${attempt}), waiting...`);
+        }
+        
+        // Wait before next attempt
+        if (attempt < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
+      } catch (error) {
+        console.error(`ProjectContext: waitForSessionClear - Unexpected error (attempt ${attempt}):`, error);
+        // Continue trying
+        if (attempt < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
+      }
+    }
+    
+    console.warn('ProjectContext: waitForSessionClear - Session may not be fully cleared, proceeding anyway');
+    return false;
+  };
+
   // Fetch notifications from Supabase
   const fetchNotifications = async () => {
     if (!currentUser) return;
@@ -581,12 +616,34 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         console.log('ProjectContext: fetchProjects completed after SIGNED_IN');
       } else if (event === 'SIGNED_OUT') {
         console.log('ProjectContext: SIGNED_OUT event detected');
+        
+        // Clear user state immediately
         setCurrentUser(null);
         setNotifications([]);
         setViewedProjects(new Set());
         localStorage.removeItem('viewedProjects');
         setContributionRequests(new Map());
         console.log('ProjectContext: User state cleared after SIGNED_OUT');
+        
+        // Wait for session to be fully cleared before fetching projects
+        console.log('ProjectContext: Waiting for session to be fully cleared...');
+        await waitForSessionClear();
+        
+        // Add a small additional delay to ensure client state is stable
+        console.log('ProjectContext: Adding additional delay for client state stability...');
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Verify session is null one more time before proceeding
+        try {
+          const { data: { session: finalSession }, error: sessionError } = await supabase.auth.getSession();
+          if (sessionError) {
+            console.error('ProjectContext: Error verifying final session state:', sessionError);
+          } else {
+            console.log('ProjectContext: Final session state verified:', finalSession === null ? 'null' : 'exists');
+          }
+        } catch (error) {
+          console.error('ProjectContext: Unexpected error verifying final session:', error);
+        }
         
         console.log('ProjectContext: Calling fetchProjects after SIGNED_OUT...');
         await fetchProjects();
