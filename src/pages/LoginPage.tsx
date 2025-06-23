@@ -20,25 +20,46 @@ const LoginPage: React.FC = () => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
+    console.log('LoginPage: handleSubmit - Start. isLoading:', true);
+    console.log('LoginPage: Form data:', { email: formData.email, password: '[REDACTED]' });
 
     try {
+      console.log('LoginPage: Calling login from ProjectContext...');
+      const startTime = Date.now();
+      
       await login(formData.email, formData.password);
+      
+      const endTime = Date.now();
+      console.log(`LoginPage: login from ProjectContext resolved in ${endTime - startTime}ms`);
+      
+      console.log('LoginPage: Initiating navigation to /home...');
       navigate('/home');
+      console.log('LoginPage: Navigation to /home completed.');
     } catch (err: any) {
+      console.error('LoginPage: Login error caught:', err);
+      console.error('LoginPage: Error details:', {
+        message: err.message,
+        code: err.code,
+        status: err.status
+      });
       setError(err.message || 'Invalid email or password');
     } finally {
       setIsLoading(false);
+      console.log('LoginPage: handleSubmit - End. isLoading:', false);
     }
   };
 
   const handleGitHubSignIn = async () => {
     setError('');
     setIsGitHubLoading(true);
+    console.log('LoginPage: GitHub sign in initiated...');
 
     try {
       await signInWithGitHub();
+      console.log('LoginPage: GitHub sign in completed.');
       // Navigation will be handled by the OAuth redirect
     } catch (err: any) {
+      console.error('LoginPage: GitHub sign in error:', err);
       setError(err.message || 'Failed to sign in with GitHub');
       setIsGitHubLoading(false);
     }

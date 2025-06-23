@@ -212,6 +212,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const fetchProjects = async () => {
     try {
       setLoading(true);
+      console.log('ProjectContext: fetchProjects - Starting...');
       
       // Fetch projects with creator profiles, tags, and user websites
       const { data: projectsData, error: projectsError } = await supabase
@@ -233,6 +234,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         console.error('Error fetching projects:', projectsError);
         return;
       }
+
+      console.log(`ProjectContext: fetchProjects - Fetched ${projectsData.length} projects`);
 
       // Fetch user websites for all project creators
       const creatorIds = projectsData.map((project: any) => project.profiles.id);
@@ -300,10 +303,12 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       });
 
       setProjects(transformedProjects);
+      console.log('ProjectContext: fetchProjects - Projects state updated');
     } catch (error) {
       console.error('Error in fetchProjects:', error);
     } finally {
       setLoading(false);
+      console.log('ProjectContext: fetchProjects - Completed');
     }
   };
 
@@ -363,15 +368,21 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Refresh projects function
   const refreshProjects = async () => {
+    console.log('ProjectContext: refreshProjects - Called');
     await fetchProjects();
   };
 
   useEffect(() => {
     const initializeData = async () => {
+      console.log('ProjectContext: initializeData - Starting...');
+      
       // Check for existing session
+      console.log('ProjectContext: Checking for existing session...');
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
+        console.log('ProjectContext: Existing session found for user:', session.user.id);
+        
         // Fetch user profile with websites
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
@@ -380,6 +391,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           .single();
 
         if (!profileError && profile) {
+          console.log('ProjectContext: User profile fetched successfully');
+          
           // Fetch user websites
           const { data: userWebsite, error: websiteError } = await supabase
             .from('user_websites')
@@ -392,15 +405,20 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           }
 
           setCurrentUser(createUserFromAuthData(session.user, { ...profile, ...userWebsite }));
+          console.log('ProjectContext: currentUser set from existing session');
         } else {
           // If no profile exists, create user from auth data
+          console.log('ProjectContext: No profile found, creating user from auth data');
           setCurrentUser(createUserFromAuthData(session.user));
         }
+      } else {
+        console.log('ProjectContext: No existing session found');
       }
 
       // Initialize mock users (for demo purposes)
       const mockUsers = generateMockUsers();
       setUsers(mockUsers);
+      console.log('ProjectContext: Mock users initialized');
       
       // Fetch projects from Supabase
       await fetchProjects();
@@ -410,7 +428,12 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('ProjectContext: onAuthStateChange event:', event);
+      console.log('ProjectContext: Session exists:', !!session);
+      
       if (event === 'SIGNED_IN' && session?.user) {
+        console.log('ProjectContext: SIGNED_IN event detected for user:', session.user.id);
+        
         // Fetch user profile with websites
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
@@ -419,6 +442,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           .single();
 
         if (!profileError && profile) {
+          console.log('ProjectContext: User profile fetched after SIGNED_IN');
+          
           // Fetch user websites
           const { data: userWebsite, error: websiteError } = await supabase
             .from('user_websites')
@@ -431,20 +456,29 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           }
 
           setCurrentUser(createUserFromAuthData(session.user, { ...profile, ...userWebsite }));
+          console.log('ProjectContext: currentUser set after SIGNED_IN');
         } else {
           // If no profile exists, create user from auth data
+          console.log('ProjectContext: No profile found after SIGNED_IN, creating user from auth data');
           setCurrentUser(createUserFromAuthData(session.user));
         }
 
         // Refresh projects after login to get user-specific data
+        console.log('ProjectContext: Calling fetchProjects after SIGNED_IN...');
         await fetchProjects();
+        console.log('ProjectContext: fetchProjects completed after SIGNED_IN');
       } else if (event === 'SIGNED_OUT') {
+        console.log('ProjectContext: SIGNED_OUT event detected');
         setCurrentUser(null);
         setNotifications([]);
         setViewedProjects(new Set());
         localStorage.removeItem('viewedProjects');
         setContributionRequests(new Map());
+        console.log('ProjectContext: User state cleared after SIGNED_OUT');
+        
+        console.log('ProjectContext: Calling fetchProjects after SIGNED_OUT...');
         await fetchProjects();
+        console.log('ProjectContext: fetchProjects completed after SIGNED_OUT');
       }
     });
 
@@ -454,8 +488,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Fetch notifications when currentUser changes
   useEffect(() => {
     if (currentUser) {
+      console.log('ProjectContext: currentUser changed, fetching notifications...');
       fetchNotifications();
     } else {
+      console.log('ProjectContext: currentUser cleared, clearing notifications');
       setNotifications([]);
     }
   }, [currentUser]);
@@ -513,20 +549,43 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const login = async (email: string, password: string) => {
+    console.log('ProjectContext: login - Starting login process...');
+    console.log('ProjectContext: login - Email:', email);
+    
     try {
+      console.log('ProjectContext: login - Calling supabase.auth.signInWithPassword...');
+      const startTime = Date.now();
+      
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
-      if (error) throw error;
+      const endTime = Date.now();
+      console.log(`ProjectContext: login - signInWithPassword completed in ${endTime - startTime}ms`);
+      
+      if (error) {
+        console.error('ProjectContext: login - signInWithPassword error:', error);
+        console.error('ProjectContext: login - Error details:', {
+          message: error.message,
+          status: error.status,
+          name: error.name
+        });
+        throw error;
+      }
+      
+      console.log('ProjectContext: login - signInWithPassword successful');
+      console.log('ProjectContext: login - User state will be updated via auth state change listener');
       // User state will be updated via the auth state change listener
     } catch (error) {
+      console.error('ProjectContext: login - Error caught and re-thrown:', error);
       throw error;
     }
   };
 
   const signup = async (email: string, password: string, name: string) => {
+    console.log('ProjectContext: signup - Starting signup process...');
+    
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
@@ -538,16 +597,26 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
       });
       
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('No user data returned');
+      if (authError) {
+        console.error('ProjectContext: signup - Auth error:', authError);
+        throw authError;
+      }
+      if (!authData.user) {
+        console.error('ProjectContext: signup - No user data returned');
+        throw new Error('No user data returned');
+      }
 
+      console.log('ProjectContext: signup - Signup successful');
       // User state will be updated via the auth state change listener
     } catch (error) {
+      console.error('ProjectContext: signup - Error:', error);
       throw error;
     }
   };
 
   const signInWithGitHub = async () => {
+    console.log('ProjectContext: signInWithGitHub - Starting GitHub OAuth...');
+    
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'github',
@@ -556,16 +625,35 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('ProjectContext: signInWithGitHub - OAuth error:', error);
+        throw error;
+      }
+      
+      console.log('ProjectContext: signInWithGitHub - OAuth initiated successfully');
       // User state will be updated via the auth state change listener
     } catch (error) {
+      console.error('ProjectContext: signInWithGitHub - Error:', error);
       throw error;
     }
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
+    console.log('ProjectContext: logout - Starting logout process...');
+    
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('ProjectContext: logout - Error during signOut:', error);
+      } else {
+        console.log('ProjectContext: logout - signOut successful');
+      }
+    } catch (error) {
+      console.error('ProjectContext: logout - Unexpected error:', error);
+    }
+    
     // User state will be updated via the auth state change listener
+    console.log('ProjectContext: logout - Process completed');
   };
 
   const updateUserProfile = async (updates: Partial<Pick<User, 'name' | 'bio' | 'location' | 'website' | 'github' | 'twitter' | 'avatar'>>) => {
