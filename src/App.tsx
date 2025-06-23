@@ -16,6 +16,7 @@ import ProfilePage from './pages/ProfilePage';
 import PublicProfilePage from './pages/PublicProfilePage';
 import SettingsPage from './pages/SettingsPage';
 import { useProjects } from './context/ProjectContext';
+import { ZapIcon } from 'lucide-react';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentUser } = useProjects();
@@ -36,9 +37,20 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       </div>
       <footer className="bg-white border-t border-gray-200 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-gray-500">
-            © {new Date().getFullYear()} CodeIdeas · Find your next coding project
-          </p>
+          <div className="flex flex-col items-center justify-center space-y-3">
+            <p className="text-center text-gray-500">
+              © {new Date().getFullYear()} CodeIdeas · Find your next coding project
+            </p>
+            <a
+              href="https://bolt.new"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-full transition-colors duration-200 group"
+            >
+              <ZapIcon size={14} className="mr-1.5 group-hover:scale-110 transition-transform duration-200" />
+              Built with Bolt
+            </a>
+          </div>
         </div>
       </footer>
     </div>
