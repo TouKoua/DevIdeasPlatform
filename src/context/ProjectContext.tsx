@@ -115,9 +115,14 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Fetch notifications from Supabase
   const fetchNotifications = async () => {
-    if (!currentUser) return;
+    console.log('ProjectContext: fetchNotifications - Starting...');
+    if (!currentUser) {
+      console.log('ProjectContext: fetchNotifications - No current user, skipping');
+      return;
+    }
 
     try {
+      console.log('ProjectContext: fetchNotifications - Fetching notifications for user:', currentUser.id);
       const { data: notificationsData, error } = await supabase
         .from('user_notifications')
         .select('*')
@@ -126,9 +131,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .limit(50);
 
       if (error) {
-        console.error('Error fetching notifications:', error);
+        console.error('ProjectContext: fetchNotifications - Error fetching notifications:', error);
         return;
       }
+
+      console.log(`ProjectContext: fetchNotifications - Fetched ${notificationsData.length} notifications`);
 
       const transformedNotifications: Notification[] = notificationsData.map((notification: any) => ({
         id: notification.id,
@@ -144,8 +151,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }));
 
       setNotifications(transformedNotifications);
+      console.log('ProjectContext: fetchNotifications - Notifications state updated');
     } catch (error) {
-      console.error('Error in fetchNotifications:', error);
+      console.error('ProjectContext: fetchNotifications - Error in fetchNotifications:', error);
     }
   };
 
@@ -211,8 +219,13 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Fetch projects from Supabase
   const fetchProjects = async () => {
     try {
-      setLoading(true);
       console.log('ProjectContext: fetchProjects - Starting...');
+      console.log('ProjectContext: fetchProjects - Current user:', currentUser?.id || 'none');
+      console.log('ProjectContext: fetchProjects - Setting loading to true');
+      setLoading(true);
+      
+      console.log('ProjectContext: fetchProjects - About to call Supabase projects query...');
+      const startTime = Date.now();
       
       // Fetch projects with creator profiles, tags, and user websites
       const { data: projectsData, error: projectsError } = await supabase
@@ -230,24 +243,35 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         `)
         .order('created_at', { ascending: false });
 
+      const queryTime = Date.now() - startTime;
+      console.log(`ProjectContext: fetchProjects - Supabase projects query completed in ${queryTime}ms`);
+
       if (projectsError) {
-        console.error('Error fetching projects:', projectsError);
+        console.error('ProjectContext: fetchProjects - Error fetching projects:', projectsError);
+        console.log('ProjectContext: fetchProjects - Setting loading to false due to error');
+        setLoading(false);
         return;
       }
 
-      console.log(`ProjectContext: fetchProjects - Fetched ${projectsData.length} projects`);
+      console.log(`ProjectContext: fetchProjects - Fetched ${projectsData.length} projects from database`);
 
+      console.log('ProjectContext: fetchProjects - About to fetch user websites...');
       // Fetch user websites for all project creators
       const creatorIds = projectsData.map((project: any) => project.profiles.id);
+      console.log(`ProjectContext: fetchProjects - Fetching websites for ${creatorIds.length} creators`);
+      
       const { data: userWebsitesData, error: websitesError } = await supabase
         .from('user_websites')
         .select('*')
         .in('id', creatorIds);
 
       if (websitesError) {
-        console.error('Error fetching user websites:', websitesError);
+        console.error('ProjectContext: fetchProjects - Error fetching user websites:', websitesError);
+      } else {
+        console.log(`ProjectContext: fetchProjects - Fetched ${userWebsitesData?.length || 0} user websites`);
       }
 
+      console.log('ProjectContext: fetchProjects - Creating user websites map...');
       // Create a map of user websites for quick lookup
       const userWebsitesMap = new Map();
       if (userWebsitesData) {
@@ -256,6 +280,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         });
       }
 
+      console.log('ProjectContext: fetchProjects - Transforming projects data...');
       // Transform the data to match our ProjectIdea interface
       const transformedProjects: ProjectIdea[] = projectsData.map((project: any) => {
         // Separate tags into programming languages and skills
@@ -302,11 +327,14 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         };
       });
 
+      console.log('ProjectContext: fetchProjects - Setting projects state...');
       setProjects(transformedProjects);
-      console.log('ProjectContext: fetchProjects - Projects state updated');
+      console.log('ProjectContext: fetchProjects - Projects state updated successfully');
     } catch (error) {
-      console.error('Error in fetchProjects:', error);
+      console.error('ProjectContext: fetchProjects - Error in fetchProjects catch block:', error);
+      console.error('ProjectContext: fetchProjects - Error stack:', error.stack);
     } finally {
+      console.log('ProjectContext: fetchProjects - Setting loading to false in finally block');
       setLoading(false);
       console.log('ProjectContext: fetchProjects - Completed');
     }
@@ -315,6 +343,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Fetch contribution requests for a specific project
   const fetchContributionRequestsForProject = async (projectId: string) => {
     try {
+      console.log(`ProjectContext: fetchContributionRequestsForProject - Starting for project ${projectId}`);
       const { data: requestsData, error: requestsError } = await supabase
         .from('contribution_requests')
         .select(`
@@ -329,9 +358,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .order('created_at', { ascending: false });
 
       if (requestsError) {
-        console.error('Error fetching contribution requests:', requestsError);
+        console.error('ProjectContext: fetchContributionRequestsForProject - Error fetching contribution requests:', requestsError);
         return;
       }
+
+      console.log(`ProjectContext: fetchContributionRequestsForProject - Fetched ${requestsData.length} requests`);
 
       // Transform the data to match our ContributionRequest interface
       const transformedRequests: ContributionRequest[] = requestsData.map((request: any) => ({
@@ -361,8 +392,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return newMap;
       });
 
+      console.log(`ProjectContext: fetchContributionRequestsForProject - Updated contribution requests for project ${projectId}`);
     } catch (error) {
-      console.error('Error in fetchContributionRequestsForProject:', error);
+      console.error('ProjectContext: fetchContributionRequestsForProject - Error in fetchContributionRequestsForProject:', error);
     }
   };
 
@@ -377,11 +409,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       console.log('ProjectContext: initializeData - Starting...');
       
       // Check for existing session
-      console.log('ProjectContext: Checking for existing session...');
+      console.log('ProjectContext: initializeData - Checking for existing session...');
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
-        console.log('ProjectContext: Existing session found for user:', session.user.id);
+        console.log('ProjectContext: initializeData - Existing session found for user:', session.user.id);
         
         // Fetch user profile with websites
         const { data: profile, error: profileError } = await supabase
@@ -391,7 +423,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           .single();
 
         if (!profileError && profile) {
-          console.log('ProjectContext: User profile fetched successfully');
+          console.log('ProjectContext: initializeData - User profile fetched successfully');
           
           // Fetch user websites
           const { data: userWebsite, error: websiteError } = await supabase
@@ -401,38 +433,40 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
             .single();
 
           if (websiteError && websiteError.code !== 'PGRST116') {
-            console.error('Error fetching user website:', websiteError);
+            console.error('ProjectContext: initializeData - Error fetching user website:', websiteError);
           }
 
           setCurrentUser(createUserFromAuthData(session.user, { ...profile, ...userWebsite }));
-          console.log('ProjectContext: currentUser set from existing session');
+          console.log('ProjectContext: initializeData - currentUser set from existing session');
         } else {
           // If no profile exists, create user from auth data
-          console.log('ProjectContext: No profile found, creating user from auth data');
+          console.log('ProjectContext: initializeData - No profile found, creating user from auth data');
           setCurrentUser(createUserFromAuthData(session.user));
         }
       } else {
-        console.log('ProjectContext: No existing session found');
+        console.log('ProjectContext: initializeData - No existing session found');
       }
 
       // Initialize mock users (for demo purposes)
       const mockUsers = generateMockUsers();
       setUsers(mockUsers);
-      console.log('ProjectContext: Mock users initialized');
+      console.log('ProjectContext: initializeData - Mock users initialized');
       
       // Fetch projects from Supabase
+      console.log('ProjectContext: initializeData - About to call fetchProjects...');
       await fetchProjects();
+      console.log('ProjectContext: initializeData - fetchProjects completed');
     };
 
     initializeData();
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('ProjectContext: onAuthStateChange event:', event);
-      console.log('ProjectContext: Session exists:', !!session);
+      console.log('ProjectContext: onAuthStateChange - Event:', event);
+      console.log('ProjectContext: onAuthStateChange - Session exists:', !!session);
       
       if (event === 'SIGNED_IN' && session?.user) {
-        console.log('ProjectContext: SIGNED_IN event detected for user:', session.user.id);
+        console.log('ProjectContext: onAuthStateChange - SIGNED_IN event detected for user:', session.user.id);
         
         // Fetch user profile with websites
         const { data: profile, error: profileError } = await supabase
@@ -442,7 +476,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           .single();
 
         if (!profileError && profile) {
-          console.log('ProjectContext: User profile fetched after SIGNED_IN');
+          console.log('ProjectContext: onAuthStateChange - User profile fetched after SIGNED_IN');
           
           // Fetch user websites
           const { data: userWebsite, error: websiteError } = await supabase
@@ -452,33 +486,40 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
             .single();
 
           if (websiteError && websiteError.code !== 'PGRST116') {
-            console.error('Error fetching user website:', websiteError);
+            console.error('ProjectContext: onAuthStateChange - Error fetching user website:', websiteError);
           }
 
           setCurrentUser(createUserFromAuthData(session.user, { ...profile, ...userWebsite }));
-          console.log('ProjectContext: currentUser set after SIGNED_IN');
+          console.log('ProjectContext: onAuthStateChange - currentUser set after SIGNED_IN');
         } else {
           // If no profile exists, create user from auth data
-          console.log('ProjectContext: No profile found after SIGNED_IN, creating user from auth data');
+          console.log('ProjectContext: onAuthStateChange - No profile found after SIGNED_IN, creating user from auth data');
           setCurrentUser(createUserFromAuthData(session.user));
         }
 
         // Refresh projects after login to get user-specific data
-        console.log('ProjectContext: Calling fetchProjects after SIGNED_IN...');
+        console.log('ProjectContext: onAuthStateChange - Calling fetchProjects after SIGNED_IN...');
         await fetchProjects();
-        console.log('ProjectContext: fetchProjects completed after SIGNED_IN');
+        console.log('ProjectContext: onAuthStateChange - fetchProjects completed after SIGNED_IN');
       } else if (event === 'SIGNED_OUT') {
-        console.log('ProjectContext: SIGNED_OUT event detected');
+        console.log('ProjectContext: onAuthStateChange - SIGNED_OUT event detected');
+        console.log('ProjectContext: onAuthStateChange - Clearing user state...');
         setCurrentUser(null);
         setNotifications([]);
         setViewedProjects(new Set());
         localStorage.removeItem('viewedProjects');
         setContributionRequests(new Map());
-        console.log('ProjectContext: User state cleared after SIGNED_OUT');
+        console.log('ProjectContext: onAuthStateChange - User state cleared after SIGNED_OUT');
         
-        console.log('ProjectContext: Calling fetchProjects after SIGNED_OUT...');
-        await fetchProjects();
-        console.log('ProjectContext: fetchProjects completed after SIGNED_OUT');
+        console.log('ProjectContext: onAuthStateChange - Calling fetchProjects after SIGNED_OUT...');
+        const fetchStartTime = Date.now();
+        try {
+          await fetchProjects();
+          const fetchEndTime = Date.now();
+          console.log(`ProjectContext: onAuthStateChange - fetchProjects completed after SIGNED_OUT in ${fetchEndTime - fetchStartTime}ms`);
+        } catch (error) {
+          console.error('ProjectContext: onAuthStateChange - Error in fetchProjects after SIGNED_OUT:', error);
+        }
       }
     });
 
@@ -497,6 +538,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [currentUser]);
 
   const markNotificationAsRead = async (id: string) => {
+    console.log(`ProjectContext: markNotificationAsRead - Marking notification ${id} as read`);
     if (!currentUser) return;
 
     try {
@@ -507,7 +549,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .eq('user_id', currentUser.id);
 
       if (error) {
-        console.error('Error marking notification as read:', error);
+        console.error('ProjectContext: markNotificationAsRead - Error marking notification as read:', error);
         return;
       }
 
@@ -519,12 +561,14 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
             : notification
         )
       );
+      console.log(`ProjectContext: markNotificationAsRead - Notification ${id} marked as read`);
     } catch (error) {
-      console.error('Error in markNotificationAsRead:', error);
+      console.error('ProjectContext: markNotificationAsRead - Error in markNotificationAsRead:', error);
     }
   };
 
   const markAllNotificationsAsRead = async () => {
+    console.log('ProjectContext: markAllNotificationsAsRead - Marking all notifications as read');
     if (!currentUser) return;
 
     try {
@@ -535,7 +579,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .eq('read_status', false);
 
       if (error) {
-        console.error('Error marking all notifications as read:', error);
+        console.error('ProjectContext: markAllNotificationsAsRead - Error marking all notifications as read:', error);
         return;
       }
 
@@ -543,8 +587,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setNotifications(prev =>
         prev.map(notification => ({ ...notification, readStatus: true }))
       );
+      console.log('ProjectContext: markAllNotificationsAsRead - All notifications marked as read');
     } catch (error) {
-      console.error('Error in markAllNotificationsAsRead:', error);
+      console.error('ProjectContext: markAllNotificationsAsRead - Error in markAllNotificationsAsRead:', error);
     }
   };
 
@@ -642,6 +687,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     console.log('ProjectContext: logout - Starting logout process...');
     
     try {
+      console.log('ProjectContext: logout - Calling supabase.auth.signOut...');
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error('ProjectContext: logout - Error during signOut:', error);
@@ -657,11 +703,13 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const updateUserProfile = async (updates: Partial<Pick<User, 'name' | 'bio' | 'location' | 'website' | 'github' | 'twitter' | 'avatar'>>) => {
+    console.log('ProjectContext: updateUserProfile - Starting...');
     if (!currentUser) {
       throw new Error('Must be logged in to update profile');
     }
 
     try {
+      console.log('ProjectContext: updateUserProfile - Updating profile in Supabase...');
       // Update the profile in Supabase (excluding social links)
       const { error: profileError } = await supabase
         .from('profiles')
@@ -675,9 +723,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .eq('id', currentUser.id);
 
       if (profileError) {
-        console.error('Error updating profile:', profileError);
+        console.error('ProjectContext: updateUserProfile - Error updating profile:', profileError);
         throw new Error('Failed to update profile');
       }
+
+      console.log('ProjectContext: updateUserProfile - Profile updated successfully');
 
       // Update or insert user websites data
       const websiteData: any = {
@@ -700,6 +750,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       // Only update user_websites if we have social link data
       if (updates.website || updates.github || updates.twitter) {
+        console.log('ProjectContext: updateUserProfile - Updating user websites...');
         const { error: websiteError } = await supabase
           .from('user_websites')
           .upsert(websiteData, {
@@ -707,9 +758,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           });
 
         if (websiteError) {
-          console.error('Error updating user websites:', websiteError);
+          console.error('ProjectContext: updateUserProfile - Error updating user websites:', websiteError);
           throw new Error('Failed to update social links');
         }
+        console.log('ProjectContext: updateUserProfile - User websites updated successfully');
       }
 
       // Update the current user state
@@ -725,20 +777,24 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       } : null);
 
       // Refresh projects to update the creator information
+      console.log('ProjectContext: updateUserProfile - Refreshing projects...');
       await fetchProjects();
+      console.log('ProjectContext: updateUserProfile - Completed successfully');
 
     } catch (error) {
-      console.error('Error in updateUserProfile:', error);
+      console.error('ProjectContext: updateUserProfile - Error in updateUserProfile:', error);
       throw error;
     }
   };
 
   const addProject = async (projectData: Omit<ProjectIdea, 'id' | 'createdAt' | 'views' | 'createdBy'>): Promise<string> => {
+    console.log('ProjectContext: addProject - Starting...');
     if (!currentUser) {
       throw new Error('Must be logged in to create a project');
     }
 
     try {
+      console.log('ProjectContext: addProject - Inserting project into database...');
       // Insert the main project into the projects table
       const { data: projectInsertData, error: projectError } = await supabase
         .from('projects')
@@ -755,11 +811,12 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .single();
 
       if (projectError) {
-        console.error('Error inserting project:', projectError);
+        console.error('ProjectContext: addProject - Error inserting project:', projectError);
         throw new Error('Failed to create project');
       }
 
       const newProjectId = projectInsertData.id;
+      console.log('ProjectContext: addProject - Project created with ID:', newProjectId);
 
       // Combine programming languages and skills into tags
       const allTags = [
@@ -769,6 +826,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       // Insert tags into project_tags table
       if (allTags.length > 0) {
+        console.log(`ProjectContext: addProject - Inserting ${allTags.length} tags...`);
         const tagInserts = allTags.map(tag => ({
           project_id: newProjectId,
           tag: tag
@@ -779,29 +837,35 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           .insert(tagInserts);
 
         if (tagsError) {
-          console.error('Error inserting project tags:', tagsError);
+          console.error('ProjectContext: addProject - Error inserting project tags:', tagsError);
           // Note: We don't throw here as the project was created successfully
           // The tags can be added later if needed
+        } else {
+          console.log('ProjectContext: addProject - Tags inserted successfully');
         }
       }
 
       // Refresh projects to get the latest data from the database
+      console.log('ProjectContext: addProject - Refreshing projects...');
       await fetchProjects();
+      console.log('ProjectContext: addProject - Completed successfully');
 
       return newProjectId;
 
     } catch (error) {
-      console.error('Error in addProject:', error);
+      console.error('ProjectContext: addProject - Error in addProject:', error);
       throw error;
     }
   };
 
   const updateProject = async (id: string, updates: Partial<Pick<ProjectIdea, 'title' | 'description' | 'difficulty' | 'programmingLanguages' | 'programmingSkills' | 'estimatedTime' | 'maxContributors' | 'showContributorCount'>>) => {
+    console.log(`ProjectContext: updateProject - Starting for project ${id}...`);
     if (!currentUser) {
       throw new Error('Must be logged in to update a project');
     }
 
     try {
+      console.log('ProjectContext: updateProject - Updating project in database...');
       // Update the main project - remove the manual updated_at setting since the trigger will handle it
       const { error: projectError } = await supabase
         .from('projects')
@@ -817,12 +881,15 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .eq('created_by', currentUser.id); // Ensure user can only update their own projects
 
       if (projectError) {
-        console.error('Error updating project:', projectError);
+        console.error('ProjectContext: updateProject - Error updating project:', projectError);
         throw new Error('Failed to update project');
       }
 
+      console.log('ProjectContext: updateProject - Project updated successfully');
+
       // Update tags if provided
       if (updates.programmingLanguages || updates.programmingSkills) {
+        console.log('ProjectContext: updateProject - Updating tags...');
         // Delete existing tags
         const { error: deleteError } = await supabase
           .from('project_tags')
@@ -830,7 +897,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           .eq('project_id', id);
 
         if (deleteError) {
-          console.error('Error deleting old tags:', deleteError);
+          console.error('ProjectContext: updateProject - Error deleting old tags:', deleteError);
         }
 
         // Insert new tags
@@ -850,26 +917,32 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
             .insert(tagInserts);
 
           if (tagsError) {
-            console.error('Error inserting updated tags:', tagsError);
+            console.error('ProjectContext: updateProject - Error inserting updated tags:', tagsError);
+          } else {
+            console.log('ProjectContext: updateProject - Tags updated successfully');
           }
         }
       }
 
       // Refresh projects to get the latest data
+      console.log('ProjectContext: updateProject - Refreshing projects...');
       await fetchProjects();
+      console.log('ProjectContext: updateProject - Completed successfully');
 
     } catch (error) {
-      console.error('Error in updateProject:', error);
+      console.error('ProjectContext: updateProject - Error in updateProject:', error);
       throw error;
     }
   };
 
   const deleteProject = async (id: string) => {
+    console.log(`ProjectContext: deleteProject - Starting for project ${id}...`);
     if (!currentUser) {
       throw new Error('Must be logged in to delete a project');
     }
 
     try {
+      console.log('ProjectContext: deleteProject - Deleting project from database...');
       // Delete the project (this will cascade delete related records due to foreign key constraints)
       const { error: deleteError } = await supabase
         .from('projects')
@@ -878,9 +951,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .eq('created_by', currentUser.id); // Ensure user can only delete their own projects
 
       if (deleteError) {
-        console.error('Error deleting project:', deleteError);
+        console.error('ProjectContext: deleteProject - Error deleting project:', deleteError);
         throw new Error('Failed to delete project');
       }
+
+      console.log('ProjectContext: deleteProject - Project deleted successfully');
 
       // Remove the project from local state immediately for better UX
       setProjects(prev => prev.filter(project => project.id !== id));
@@ -892,25 +967,32 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return newMap;
       });
 
+      console.log('ProjectContext: deleteProject - Local state updated');
+
     } catch (error) {
-      console.error('Error in deleteProject:', error);
+      console.error('ProjectContext: deleteProject - Error in deleteProject:', error);
       throw error;
     }
   };
 
   const incrementProjectViews = async (id: string) => {
+    console.log(`ProjectContext: incrementProjectViews - Starting for project ${id}...`);
     if(!currentUser){
+      console.log('ProjectContext: incrementProjectViews - No current user, skipping');
       return;
     }
     // Check if this project has already been viewed by this user/session
     if (viewedProjects.has(id)) {
+      console.log(`ProjectContext: incrementProjectViews - Project ${id} already viewed, skipping`);
       return; // Don't increment if already viewed
     }
 
     // Mark this project as viewed locally immediately to prevent repeated API calls
     setViewedProjects(prev => new Set([...prev, id]));
+    console.log(`ProjectContext: incrementProjectViews - Marked project ${id} as viewed locally`);
 
     try {
+      console.log(`ProjectContext: incrementProjectViews - Tracking view in database for project ${id}...`);
       // Track the view in Supabase
       const { error } = await supabase
         .from('project_views')
@@ -923,13 +1005,16 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (error.code === '23505') {
           // Duplicate key error - view already exists in database, this is expected
           // Don't log as error and don't increment local count
+          console.log(`ProjectContext: incrementProjectViews - View already exists in database for project ${id}`);
           return;
         } else {
           // Other Supabase errors should be logged
-          console.error('Error tracking project view:', error);
+          console.error('ProjectContext: incrementProjectViews - Error tracking project view:', error);
           return;
         }
       }
+
+      console.log(`ProjectContext: incrementProjectViews - View tracked successfully for project ${id}`);
 
       // Only increment local view count if the insert was successful (no error)
       setProjects(prev => 
@@ -940,13 +1025,16 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         )
       );
 
+      console.log(`ProjectContext: incrementProjectViews - Local view count incremented for project ${id}`);
+
     } catch (error) {
       // Log unexpected client-side errors
-      console.error('Error in incrementProjectViews:', error);
+      console.error('ProjectContext: incrementProjectViews - Error in incrementProjectViews:', error);
     }
   };
 
   const saveProject = (id: string) => {
+    console.log(`ProjectContext: saveProject - Toggling save status for project ${id}`);
     setProjects(prev => 
       prev.map(project => 
         project.id === id 
@@ -957,6 +1045,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const searchProjects = (query: string, filters: any): ProjectIdea[] => {
+    console.log(`ProjectContext: searchProjects - Searching with query: "${query}"`);
     let filteredProjects = [...projects];
     
     if (query) {
@@ -987,6 +1076,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       );
     }
     
+    console.log(`ProjectContext: searchProjects - Found ${filteredProjects.length} results`);
     return filteredProjects;
   };
 
@@ -995,9 +1085,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const getUserById = async (id: string): Promise<User | undefined> => {
+    console.log(`ProjectContext: getUserById - Fetching user ${id}...`);
     try {
       // First check if it's the current user
       if (currentUser && currentUser.id === id) {
+        console.log('ProjectContext: getUserById - Returning current user');
         return currentUser;
       }
 
@@ -1009,6 +1101,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .single();
 
       if (!error && profile) {
+        console.log('ProjectContext: getUserById - User found in database');
         // Fetch user websites
         const { data: userWebsite, error: websiteError } = await supabase
           .from('user_websites')
@@ -1017,7 +1110,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           .single();
 
         if (websiteError && websiteError.code !== 'PGRST116') {
-          console.error('Error fetching user website:', websiteError);
+          console.error('ProjectContext: getUserById - Error fetching user website:', websiteError);
         }
 
         // Extract social links from URLs
@@ -1056,9 +1149,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
 
       // Fallback to mock users for demo purposes
+      console.log('ProjectContext: getUserById - Falling back to mock users');
       return users.find(user => user.id === id);
     } catch (error) {
-      console.error('Error fetching user by ID:', error);
+      console.error('ProjectContext: getUserById - Error fetching user by ID:', error);
       // Fallback to mock users
       return users.find(user => user.id === id);
     }
@@ -1069,12 +1163,14 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const createContributionRequest = async (projectId: string, message?: string) => {
+    console.log(`ProjectContext: createContributionRequest - Starting for project ${projectId}...`);
     if (!currentUser) throw new Error('Must be logged in to create contribution request');
     
     const project = getProjectById(projectId);
     if (!project) throw new Error('Project not found');
 
     try {
+      console.log('ProjectContext: createContributionRequest - Calling edge function...');
       // Call the Edge Function to send email notification and save to database
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/request-contribution`, {
         method: 'POST',
@@ -1096,24 +1192,30 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('ProjectContext: createContributionRequest - Edge function error:', errorData);
         throw new Error(errorData.error || 'Failed to send contribution request');
       }
 
+      console.log('ProjectContext: createContributionRequest - Edge function completed successfully');
+
       // Refresh contribution requests for this project to get the latest data
       await fetchContributionRequestsForProject(projectId);
+      console.log('ProjectContext: createContributionRequest - Completed successfully');
 
     } catch (error) {
-      console.error('Error creating contribution request:', error);
+      console.error('ProjectContext: createContributionRequest - Error creating contribution request:', error);
       throw error;
     }
   };
 
   const updateContributionRequestStatus = async (requestId: string, status: 'accepted' | 'declined', responseMessage?: string) => {
+    console.log(`ProjectContext: updateContributionRequestStatus - Starting for request ${requestId} with status ${status}...`);
     if (!currentUser) {
       throw new Error('Must be logged in to update contribution request status');
     }
 
     try {
+      console.log('ProjectContext: updateContributionRequestStatus - Updating status in database...');
       // Update the contribution request status in the database
       const { error: updateError } = await supabase
         .from('contribution_requests')
@@ -1125,9 +1227,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .eq('id', requestId);
 
       if (updateError) {
-        console.error('Error updating contribution request status:', updateError);
+        console.error('ProjectContext: updateContributionRequestStatus - Error updating contribution request status:', updateError);
         throw new Error('Failed to update contribution request status');
       }
+
+      console.log('ProjectContext: updateContributionRequestStatus - Status updated successfully');
 
       // Update local state for all projects that might have this request
       setContributionRequests(prev => {
@@ -1145,10 +1249,12 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       // Refresh projects to get the updated contributor count from the database
       // The database trigger will have updated the current_contributors count
+      console.log('ProjectContext: updateContributionRequestStatus - Refreshing projects...');
       await refreshProjects();
+      console.log('ProjectContext: updateContributionRequestStatus - Completed successfully');
 
     } catch (error) {
-      console.error('Error in updateContributionRequestStatus:', error);
+      console.error('ProjectContext: updateContributionRequestStatus - Error in updateContributionRequestStatus:', error);
       throw error;
     }
   };
