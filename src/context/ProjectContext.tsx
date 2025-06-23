@@ -208,15 +208,33 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
   }, [currentUser]);
 
+  // Helper function to create a timeout promise
+  const createTimeoutPromise = (timeoutMs: number) => {
+    return new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`Operation timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+    });
+  };
+
   // Fetch projects from Supabase
   const fetchProjects = async () => {
     try {
       setLoading(true);
       console.log('ProjectContext: fetchProjects - Starting...');
       
+      // Check Supabase client configuration
+      console.log('ProjectContext: fetchProjects - Supabase URL:', import.meta.env.VITE_SUPABASE_URL ? 'Set' : 'Not set');
+      console.log('ProjectContext: fetchProjects - Supabase Anon Key:', import.meta.env.VITE_SUPABASE_ANON_KEY ? 'Set' : 'Not set');
+      
       // Fetch projects with creator profiles, tags, and user websites
       console.log('ProjectContext: fetchProjects - About to call supabase.from(projects).select()...');
-      const { data: projectsData, error: projectsError } = await supabase
+      
+      // Create a timeout promise (30 seconds)
+      const timeoutPromise = createTimeoutPromise(30000);
+      
+      // Create the actual query promise
+      const queryPromise = supabase
         .from('projects')
         .select(`
           *,
@@ -231,6 +249,17 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         `)
         .order('created_at', { ascending: false });
 
+      // Race the query against the timeout
+      let projectsData, projectsError;
+      try {
+        const result = await Promise.race([queryPromise, timeoutPromise]);
+        projectsData = result.data;
+        projectsError = result.error;
+      } catch (timeoutError) {
+        console.error('ProjectContext: fetchProjects - Query timed out:', timeoutError);
+        throw new Error('Database query timed out. Please check your connection.');
+      }
+
       console.log('ProjectContext: fetchProjects - Supabase projects query completed');
 
       if (projectsError) {
@@ -243,10 +272,25 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       // Fetch user websites for all project creators
       const creatorIds = projectsData.map((project: any) => project.profiles.id);
       console.log('ProjectContext: fetchProjects - About to call supabase.from(user_websites).select()...');
-      const { data: userWebsitesData, error: websitesError } = await supabase
+      
+      // Create timeout for user websites query
+      const websitesTimeoutPromise = createTimeoutPromise(15000);
+      const websitesQueryPromise = supabase
         .from('user_websites')
         .select('*')
         .in('id', creatorIds);
+
+      let userWebsitesData, websitesError;
+      try {
+        const result = await Promise.race([websitesQueryPromise, websitesTimeoutPromise]);
+        userWebsitesData = result.data;
+        websitesError = result.error;
+      } catch (timeoutError) {
+        console.error('ProjectContext: fetchProjects - User websites query timed out:', timeoutError);
+        // Continue without user websites data
+        userWebsitesData = [];
+        websitesError = null;
+      }
 
       console.log('ProjectContext: fetchProjects - Supabase user_websites query completed');
 
@@ -316,6 +360,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       console.log('ProjectContext: fetchProjects - Projects state updated');
     } catch (error) {
       console.error('Error in fetchProjects:', error);
+      // Set empty projects array on error to prevent infinite loading
+      setProjects([]);
     } finally {
       setLoading(false);
       console.log('ProjectContext: fetchProjects - Completed');
