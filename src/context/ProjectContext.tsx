@@ -230,17 +230,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       // Fetch projects with creator profiles, tags, and user websites
       const { data: projectsData, error: projectsError } = await supabase
         .from('projects')
-        .select(`
-          *,
-          profiles!projects_created_by_fkey (
-            id,
-            name,
-            avatar_url
-          ),
-          project_tags (
-            tag
-          )
-        `)
+        .select(`*`)
         .order('created_at', { ascending: false });
 
       const queryTime = Date.now() - startTime;
