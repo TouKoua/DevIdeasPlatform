@@ -31,6 +31,7 @@ interface ProjectContextType {
   fetchContributionRequestsForProject: (projectId: string) => Promise<void>;
   currentUser: User | null;
   login: (email: string, password: string) => Promise<void>;
+  loginWithGitHub: () => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
   markNotificationAsRead: (id: number) => void;
@@ -277,6 +278,48 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     initializeData();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        // Fetch user profile after sign in
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (!profileError && profile) {
+          setCurrentUser({
+            id: profile.id,
+            name: profile.name,
+            avatar: profile.avatar_url || 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
+            bio: profile.bio,
+            location: profile.location,
+            website: profile.website,
+            github: profile.github,
+            twitter: profile.twitter,
+            joinedDate: new Date(profile.created_at),
+            savedProjects: [],
+            postedProjects: []
+          });
+        }
+        
+        // Refresh projects after login to get user-specific data
+        await fetchProjects();
+      } else if (event === 'SIGNED_OUT') {
+        setCurrentUser(null);
+        // Clear viewed projects on logout
+        setViewedProjects(new Set());
+        localStorage.removeItem('viewedProjects');
+        // Clear contribution requests cache
+        setContributionRequests(new Map());
+        // Refresh projects after logout to remove user-specific data
+        await fetchProjects();
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const markNotificationAsRead = (id: number) => {
@@ -304,31 +347,22 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       
       if (error) throw error;
 
-      // Fetch user profile after successful login
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', (await supabase.auth.getUser()).data.user?.id)
-        .single();
+      // User state will be updated via the auth state change listener
+    } catch (error) {
+      throw error;
+    }
+  };
 
-      if (profileError) throw profileError;
-
-      setCurrentUser({
-        id: profile.id,
-        name: profile.name,
-        avatar: profile.avatar_url || 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
-        bio: profile.bio,
-        location: profile.location,
-        website: profile.website,
-        github: profile.github,
-        twitter: profile.twitter,
-        joinedDate: new Date(profile.created_at),
-        savedProjects: [],
-        postedProjects: []
+  const loginWithGitHub = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'github',
+        options: {
+          redirectTo: `${window.location.origin}/home`
+        }
       });
-
-      // Refresh projects after login to get user-specific data
-      await fetchProjects();
+      
+      if (error) throw error;
     } catch (error) {
       throw error;
     }
@@ -349,18 +383,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (authError) throw authError;
       if (!authData.user) throw new Error('No user data returned');
 
-      // Set the current user
-      setCurrentUser({
-        id: authData.user.id,
-        name: authData.user.user_metadata.name,
-        avatar: 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=256',
-        joinedDate: new Date(),
-        savedProjects: [],
-        postedProjects: []
-      });
-
-      // Refresh projects after signup
-      await fetchProjects();
+      // User state will be updated via the auth state change listener
     } catch (error) {
       throw error;
     }
@@ -368,14 +391,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const logout = async () => {
     await supabase.auth.signOut();
-    setCurrentUser(null);
-    // Clear viewed projects on logout
-    setViewedProjects(new Set());
-    localStorage.removeItem('viewedProjects');
-    // Clear contribution requests cache
-    setContributionRequests(new Map());
-    // Refresh projects after logout to remove user-specific data
-    await fetchProjects();
+    // User state will be updated via the auth state change listener
   };
 
   const updateUserProfile = async (updates: Partial<Pick<User, 'name' | 'bio' | 'location' | 'website' | 'github' | 'twitter' | 'avatar'>>) => {
@@ -867,6 +883,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         fetchContributionRequestsForProject,
         currentUser,
         login,
+        loginWithGitHub,
         signup,
         logout,
         markNotificationAsRead,

@@ -3,26 +3,44 @@ import { Link, useNavigate } from 'react-router-dom';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import { useProjects } from '../context/ProjectContext';
-import { LogInIcon } from 'lucide-react';
+import { LogInIcon, GithubIcon } from 'lucide-react';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { login } = useProjects();
+  const { login, loginWithGitHub } = useProjects();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isGitHubLoading, setIsGitHubLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true);
 
     try {
       await login(formData.email, formData.password);
       navigate('/home');
-    } catch (err) {
-      setError('Invalid email or password');
+    } catch (err: any) {
+      setError(err.message || 'Invalid email or password');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGitHubLogin = async () => {
+    setError('');
+    setIsGitHubLoading(true);
+
+    try {
+      await loginWithGitHub();
+      // Navigation will be handled by the OAuth redirect
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign in with GitHub');
+      setIsGitHubLoading(false);
     }
   };
 
@@ -42,13 +60,39 @@ const LoginPage: React.FC = () => {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md">
-                {error}
-              </div>
-            )}
+          {error && (
+            <div className="mb-6 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md">
+              {error}
+            </div>
+          )}
 
+          {/* GitHub Sign In Button */}
+          <div className="mb-6">
+            <Button
+              type="button"
+              variant="outline"
+              fullWidth
+              size="lg"
+              icon={<GithubIcon size={20} />}
+              onClick={handleGitHubLogin}
+              disabled={isGitHubLoading || isLoading}
+            >
+              {isGitHubLoading ? 'Signing in...' : 'Continue with GitHub'}
+            </Button>
+          </div>
+
+          {/* Divider */}
+          <div className="relative mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">Or continue with email</span>
+            </div>
+          </div>
+
+          {/* Email/Password Form */}
+          <form className="space-y-6" onSubmit={handleSubmit}>
             <Input
               id="email"
               name="email"
@@ -57,6 +101,7 @@ const LoginPage: React.FC = () => {
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               required
+              disabled={isLoading || isGitHubLoading}
             />
 
             <Input
@@ -67,6 +112,7 @@ const LoginPage: React.FC = () => {
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               required
+              disabled={isLoading || isGitHubLoading}
             />
 
             <Button
@@ -75,8 +121,9 @@ const LoginPage: React.FC = () => {
               fullWidth
               size="lg"
               icon={<LogInIcon size={20} />}
+              disabled={isLoading || isGitHubLoading}
             >
-              Sign in
+              {isLoading ? 'Signing in...' : 'Sign in'}
             </Button>
           </form>
         </div>
