@@ -627,7 +627,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   //   }
   // };
 
-   const logout = async () => {
+  const logout = async () => {
     await supabase.auth.signOut();
     setCurrentUser(null);
     setNotifications([]);
@@ -639,7 +639,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // Refresh projects after logout to remove user-specific data
     await fetchProjects();
     // User state will be updated via the auth state change listener
-  };
+};
 
     await supabase.auth.signOut();
     // User state will be updated via the auth state change listener
