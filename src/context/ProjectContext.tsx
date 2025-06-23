@@ -627,11 +627,19 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   //   }
   // };
 
-  const logout = async () => {
-    if (!isSupabaseConfigured()) {
-      setCurrentUser(null);
-      return;
-    }
+   const logout = async () => {
+    await supabase.auth.signOut();
+    setCurrentUser(null);
+    setNotifications([]);
+    // Clear viewed projects on logout
+    setViewedProjects(new Set());
+    localStorage.removeItem('viewedProjects');
+    // Clear contribution requests cache
+    setContributionRequests(new Map());
+    // Refresh projects after logout to remove user-specific data
+    await fetchProjects();
+    // User state will be updated via the auth state change listener
+  };
 
     await supabase.auth.signOut();
     // User state will be updated via the auth state change listener
