@@ -419,6 +419,22 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       // Check for existing session
       console.log('ProjectContext: initializeData - Checking for existing session...');
       const { data: { session } } = await supabase.auth.getSession();
+
+      let sessionData;
+      try {
+        console.log('ProjectContext: Calling supabase.auth.getSession()...');
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('ProjectContext: Error getting session:', error);
+          // Optionally, handle specific session errors here
+        }
+        sessionData = session;
+        console.log('ProjectContext: supabase.auth.getSession() call completed.');
+      } catch (error) {
+        console.error('ProjectContext: Caught unexpected error during getSession:', error);
+        // If an unexpected error occurs, ensure sessionData is null
+        sessionData = null;
+      }
       
       if (session?.user) {
         console.log('ProjectContext: initializeData - Existing session found for user:', session.user.id);
