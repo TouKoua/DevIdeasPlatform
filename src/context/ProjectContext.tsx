@@ -616,6 +616,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         console.log('ProjectContext: fetchProjects completed after SIGNED_IN');
       } else if (event === 'SIGNED_OUT') {
         console.log('ProjectContext: SIGNED_OUT event detected');
+
+        // Wait for session to be fully cleared before fetching projects
+        console.log('ProjectContext: Waiting for session to be fully cleared...');
+        await waitForSessionClear();
         
         // Clear user state immediately
         setCurrentUser(null);
@@ -624,10 +628,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         localStorage.removeItem('viewedProjects');
         setContributionRequests(new Map());
         console.log('ProjectContext: User state cleared after SIGNED_OUT');
-        
-        // Wait for session to be fully cleared before fetching projects
-        console.log('ProjectContext: Waiting for session to be fully cleared...');
-        await waitForSessionClear();
         
         // Add a small additional delay to ensure client state is stable
         console.log('ProjectContext: Adding additional delay for client state stability...');
