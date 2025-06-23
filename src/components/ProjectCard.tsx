@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ProjectIdea } from '../types';
 import Badge from './ui/Badge';
-import { BookmarkIcon, EyeIcon, ClockIcon, CodeIcon, CpuIcon, UsersIcon } from 'lucide-react';
+import { BookmarkIcon, EyeIcon, ClockIcon, CodeIcon, CpuIcon, UsersIcon, CheckCircleIcon, PlayCircleIcon, UserCheckIcon } from 'lucide-react';
 import { useProjects } from '../context/ProjectContext';
 
 interface ProjectCardProps {
@@ -19,6 +19,45 @@ const getDifficultyColor = (difficulty: string): string => {
       return 'danger';
     default:
       return 'default';
+  }
+};
+
+const getStatusColor = (status: string): string => {
+  switch (status) {
+    case 'recruiting':
+      return 'primary';
+    case 'working':
+      return 'warning';
+    case 'completed':
+      return 'success';
+    default:
+      return 'default';
+  }
+};
+
+const getStatusIcon = (status: string) => {
+  switch (status) {
+    case 'recruiting':
+      return <UsersIcon size={14} />;
+    case 'working':
+      return <PlayCircleIcon size={14} />;
+    case 'completed':
+      return <CheckCircleIcon size={14} />;
+    default:
+      return <UserCheckIcon size={14} />;
+  }
+};
+
+const getStatusLabel = (status: string): string => {
+  switch (status) {
+    case 'recruiting':
+      return 'Recruiting';
+    case 'working':
+      return 'In Progress';
+    case 'completed':
+      return 'Completed';
+    default:
+      return status;
   }
 };
 
@@ -74,6 +113,17 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
             >
               {project.difficulty}
             </Badge>
+            {project.status && project.showStatus !== false && (
+              <Badge 
+                variant={getStatusColor(project.status)}
+                size="sm"
+              >
+                <span className="flex items-center gap-1">
+                  {getStatusIcon(project.status)}
+                  {getStatusLabel(project.status)}
+                </span>
+              </Badge>
+            )}
             {isUpdated && (
               <Badge variant="primary" size="sm">
                 Updated

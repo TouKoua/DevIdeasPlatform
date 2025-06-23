@@ -6,7 +6,7 @@ import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import Textarea from '../components/ui/Textarea';
 import ProjectCard from '../components/ProjectCard';
-import { EyeIcon, BookmarkIcon, ClockIcon, CodeIcon, CpuIcon, ArrowLeftIcon, UserIcon, EditIcon, MailIcon, UsersIcon, MessageSquareIcon, SendIcon, TrashIcon, AlertTriangleIcon } from 'lucide-react';
+import { EyeIcon, BookmarkIcon, ClockIcon, CodeIcon, CpuIcon, ArrowLeftIcon, UserIcon, EditIcon, MailIcon, UsersIcon, MessageSquareIcon, SendIcon, TrashIcon, AlertTriangleIcon, CheckCircleIcon, PlayCircleIcon, UserCheckIcon } from 'lucide-react';
 
 const getDifficultyColor = (difficulty: string): string => {
   switch (difficulty) {
@@ -18,6 +18,45 @@ const getDifficultyColor = (difficulty: string): string => {
       return 'danger';
     default:
       return 'default';
+  }
+};
+
+const getStatusColor = (status: string): string => {
+  switch (status) {
+    case 'recruiting':
+      return 'primary';
+    case 'working':
+      return 'warning';
+    case 'completed':
+      return 'success';
+    default:
+      return 'default';
+  }
+};
+
+const getStatusIcon = (status: string) => {
+  switch (status) {
+    case 'recruiting':
+      return <UsersIcon size={16} />;
+    case 'working':
+      return <PlayCircleIcon size={16} />;
+    case 'completed':
+      return <CheckCircleIcon size={16} />;
+    default:
+      return <UserCheckIcon size={16} />;
+  }
+};
+
+const getStatusLabel = (status: string): string => {
+  switch (status) {
+    case 'recruiting':
+      return 'Recruiting Contributors';
+    case 'working':
+      return 'Work in Progress';
+    case 'completed':
+      return 'Completed';
+    default:
+      return status;
   }
 };
 
@@ -201,6 +240,17 @@ const ProjectDetailPage: React.FC = () => {
                   >
                     {project.difficulty}
                   </Badge>
+                  {project.status && project.showStatus !== false && (
+                    <Badge 
+                      variant={getStatusColor(project.status)}
+                      size="lg"
+                    >
+                      <span className="flex items-center gap-1">
+                        {getStatusIcon(project.status)}
+                        {getStatusLabel(project.status)}
+                      </span>
+                    </Badge>
+                  )}
                   {isUpdated && (
                     <Badge variant="primary" size="lg">
                       Updated
