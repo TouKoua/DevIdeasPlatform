@@ -569,7 +569,7 @@ const EditProjectPage: React.FC = () => {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => navigate(`/project/${project.id}`)}
+                onClick={() => history.back()}
                 disabled={isLoading}
               >
                 Cancel
