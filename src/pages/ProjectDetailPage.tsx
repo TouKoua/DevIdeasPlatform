@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useProjects } from '../context/ProjectContext';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
