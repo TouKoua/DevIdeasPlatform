@@ -114,7 +114,7 @@ const EditProjectPage: React.FC = () => {
         <p className="text-gray-600 mb-6">You can only edit projects that you created.</p>
         <Button 
           variant="primary" 
-          onClick={() => navigate(-1)}
+          onClick={() => history.back()}
           icon={<ArrowLeftIcon size={18} />}
         >
           Back to Project
