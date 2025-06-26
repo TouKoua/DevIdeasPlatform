@@ -556,7 +556,7 @@ const ProjectDetailPage: React.FC = () => {
               <h3 className="text-lg font-medium text-gray-900 mb-4">Similar Projects</h3>
               <div className="space-y-4">
                 {similarProjects.map((similarProject) => (
-                  <Link to={`/project/${similarProject.id}`} state={{from: 'home'}} key={similarProject.id} className="block">
+                  <Link to={`/project/${similarProject.id}`} state={{from: 'project'}} key={similarProject.id} className="block">
                     <ProjectCard project={similarProject} />
                   </Link>
                 ))}
