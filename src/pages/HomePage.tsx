@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import ProjectCard from '../components/ProjectCard';
-import { Link } from 'next/navigation';
 import { useProjects } from '../context/ProjectContext';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom', 'next/navigation';
 import { TrendingUpIcon, LayersIcon, SearchIcon, ZapIcon, PlusSquareIcon, ClockIcon, RefreshCwIcon } from 'lucide-react';
 import Button from '../components/ui/Button';
 
