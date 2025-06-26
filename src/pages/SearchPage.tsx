@@ -66,7 +66,7 @@ const SearchPage: React.FC = () => {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {searchResults.map((project) => (
-                  <Link to={`/project/${project.id}`} state={{from: 'home'}} key={project.id} className="block">
+                  <Link to={`/project/${project.id}`} state={{from: 'search'}} key={project.id} className="block">
                     <ProjectCard project={project} />
                   </Link>
                 ))}
