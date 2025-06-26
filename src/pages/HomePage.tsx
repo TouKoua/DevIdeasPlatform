@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import ProjectCard from '../components/ProjectCard';
+import { Link } from 'next/navigation';
 import { useProjects } from '../context/ProjectContext';
 import { Link } from 'react-router-dom';
 import { TrendingUpIcon, LayersIcon, SearchIcon, ZapIcon, PlusSquareIcon, ClockIcon, RefreshCwIcon } from 'lucide-react';
@@ -149,7 +150,7 @@ const HomePage: React.FC = () => {
       {projectsToDisplay.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {projectsToDisplay.map(project => (
-            <Link to={`/project/${project.id}`} key={project.id} className="block">
+            <Link to={`/project/${project.id}?prev=home`} key={project.id} className="block">
               <ProjectCard project={project} />
             </Link>
           ))}
