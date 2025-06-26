@@ -174,7 +174,7 @@ const ProfilePage: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {postedProjects.map(project => (
                     <div key={project.id} className="relative group">
-                      <Link to={`/project/${project.id}`}>
+                      <Link to={`/project/${project.id}`} state={{from: 'home'}}>
                         <ProjectCard project={project} />
                       </Link>
                       
