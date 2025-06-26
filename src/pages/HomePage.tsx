@@ -149,7 +149,7 @@ const HomePage: React.FC = () => {
       {projectsToDisplay.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {projectsToDisplay.map(project => (
-            <Link to={`/project/${project.id}?prev=home`} key={project.id} className="block">
+            <Link to={`/project/${project.id}`} state={{from: 'home'}} key={project.id} className="block">
               <ProjectCard project={project} />
             </Link>
           ))}
