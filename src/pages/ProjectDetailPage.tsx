@@ -125,7 +125,7 @@ const ProjectDetailPage: React.FC = () => {
     };
     
     updateLocalRequests();
-  }, [contributionRequests, id, getContributionRequestsForProject, requestsLoading, fetchContributionRequestsForProject]);
+  }, [contributionRequests, id, getContributionRequestsForProject, requestsLoading]);
   
   // Calculate similar projects only once when the project loads or changes
   useEffect(() => {
@@ -178,11 +178,11 @@ const ProjectDetailPage: React.FC = () => {
   });
 
   const isOwner = currentUser && currentUser.id === project.createdBy.id;
-  const pendingRequests = contributionRequests.filter(req => req.status === 'pending');
-  const acceptedRequests = contributionRequests.filter(req => req.status === 'accepted');
+  const pendingRequests = projectRequests.filter(req => req.status === 'pending');
+  const acceptedRequests = projectRequests.filter(req => req.status === 'accepted');
   
   // Check if current user has already requested to contribute
-  const hasRequestedContribution = currentUser && contributionRequests.some(
+  const hasRequestedContribution = currentUser && projectRequests.some(
     req => req.requesterId === currentUser.id
   );
 
