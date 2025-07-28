@@ -71,7 +71,8 @@ const ProjectDetailPage: React.FC = () => {
     createContributionRequest,
     getContributionRequestsForProject,
     fetchContributionRequestsForProject,
-    deleteProject
+    deleteProject,
+    contributionRequests
   } = useProjects();
   const navigate = useNavigate();
   const [isRequestingContribution, setIsRequestingContribution] = useState(false);
@@ -84,16 +85,47 @@ const ProjectDetailPage: React.FC = () => {
   const [teammateToRemove, setTeammateToRemove] = useState<any>(null);
   const [isRemovingTeammate, setIsRemovingTeammate] = useState(false);
   const [similarProjects, setSimilarProjects] = useState<any[]>([]);
+  const [projectRequests, setProjectRequests] = useState<any[]>([]);
+  const [requestsLoading, setRequestsLoading] = useState(true);
   
   const project = getProjectById(id || '');
-  const contributionRequests = getContributionRequestsForProject(id || '');
   
   // Fetch contribution requests when the component mounts or project ID changes
   useEffect(() => {
-    if (id) {
-      fetchContributionRequestsForProject(id);
-    }
-  }, [id, fetchContributionRequestsForProject]);
+    const loadContributionRequests = async () => {
+      if (id) {
+        setRequestsLoading(true);
+        try {
+          await fetchContributionRequestsForProject(id);
+          const requests = await getContributionRequestsForProject(id);
+          setProjectRequests(requests);
+        } catch (error) {
+          console.error('Error loading contribution requests:', error);
+          setProjectRequests([]);
+        } finally {
+          setRequestsLoading(false);
+        }
+      }
+    };
+    
+    loadContributionRequests();
+  }, [id, fetchContributionRequestsForProject, getContributionRequestsForProject]);
+  
+  // Update local requests when the global contribution requests change
+  useEffect(() => {
+    const updateLocalRequests = async () => {
+      if (id && !requestsLoading) {
+        try {
+          const requests = await getContributionRequestsForProject(id);
+          setProjectRequests(requests);
+        } catch (error) {
+          console.error('Error updating local requests:', error);
+        }
+      }
+    };
+    
+    updateLocalRequests();
+  }, [contributionRequests, id, getContributionRequestsForProject, requestsLoading, fetchContributionRequestsForProject]);
   
   // Calculate similar projects only once when the project loads or changes
   useEffect(() => {
@@ -523,10 +555,10 @@ const ProjectDetailPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Current Team Members */}
+              {/* Team Members Section */}
               {isOwner && acceptedRequests.length > 0 && (
                 <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <h3 className="text-lg font-medium text-gray-900 mb-3">Current Team Members</h3>
+                  <h3 className="text-lg font-medium text-gray-900 mb-3">Team Members</h3>
                   <div className="space-y-3">
                     {acceptedRequests.map((request) => (
                       <div key={request.id} className="flex items-center justify-between">
@@ -556,7 +588,7 @@ const ProjectDetailPage: React.FC = () => {
                             setTeammateToRemove(request.requester);
                             setShowRemoveTeammateModal(true);
                           }}
-                          className="text-red-600 hover:text-red-700 hover:border-red-300"
+                          title="Remove from team"
                         >
                           Remove
                         </Button>
@@ -597,26 +629,26 @@ const ProjectDetailPage: React.FC = () => {
           </div>
 
           {/* Contribution Requests Summary for Owner */}
-          {isOwner && !requestsLoading && projectRequests.length > 0 && (
+          {isOwner && contributionRequests.length > 0 && (
             <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 mb-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Contribution Requests</h3>
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Pending:</span>
                   <span className="font-medium text-orange-600">
-                    {projectRequests.filter(r => r.status === 'pending').length}
+                    {contributionRequests.filter(r => r.status === 'pending').length}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Accepted:</span>
                   <span className="font-medium text-green-600">
-                    {projectRequests.filter(r => r.status === 'accepted').length}
+                    {contributionRequests.filter(r => r.status === 'accepted').length}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Declined:</span>
                   <span className="font-medium text-red-600">
-                    {projectRequests.filter(r => r.status === 'declined').length}
+                    {contributionRequests.filter(r => r.status === 'declined').length}
                   </span>
                 </div>
               </div>
