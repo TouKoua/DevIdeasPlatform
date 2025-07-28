@@ -353,7 +353,6 @@ const ContributionRequestsPage: React.FC = () => {
       )}
 
       {/* Empty State */}
-      {contributionRequests.length === 0 && (
         <div className="bg-white rounded-lg shadow-md border border-gray-200 p-12 text-center">
           <UserIcon size={48} className="mx-auto text-gray-400 mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No contribution requests yet</h3>
