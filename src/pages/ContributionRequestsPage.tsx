@@ -29,15 +29,30 @@ const ContributionRequestsPage: React.FC = () => {
   
   const [responseMessages, setResponseMessages] = useState<Record<string, string>>({});
   const [processingRequests, setProcessingRequests] = useState<Set<string>>(new Set());
+  const [projectRequests, setProjectRequests] = useState<any[]>([]);
+  const [requestsLoading, setRequestsLoading] = useState(true);
 
   const project = getProjectById(id || '');
-  const contributionRequests = getContributionRequestsForProject(id || '');
 
   // Fetch contribution requests when the component mounts or project ID changes
   useEffect(() => {
-    if (id) {
-      fetchContributionRequestsForProject(id);
-    }
+    const loadContributionRequests = async () => {
+      if (id) {
+        setRequestsLoading(true);
+        try {
+          await fetchContributionRequestsForProject(id);
+          const requests = await getContributionRequestsForProject(id);
+          setProjectRequests(requests);
+        } catch (error) {
+          console.error('Error loading contribution requests:', error);
+          setProjectRequests([]);
+        } finally {
+          setRequestsLoading(false);
+        }
+      }
+    };
+    
+    loadContributionRequests();
   }, [id, fetchContributionRequestsForProject]);
 
   if (!project) {
@@ -73,6 +88,7 @@ const ContributionRequestsPage: React.FC = () => {
     );
   }
 
+  const contributionRequests = projectRequests;
   const pendingRequests = contributionRequests.filter(req => req.status === 'pending');
   const processedRequests = contributionRequests.filter(req => req.status !== 'pending');
 
@@ -353,7 +369,7 @@ const ContributionRequestsPage: React.FC = () => {
       )}
 
       {/* Empty State */}
-      {!requestsLoading && (pendingRequests.length === 0 && processedRequests.length === 0) && (
+      {(pendingRequests.length === 0 && processedRequests.length === 0) && (
         <div className="text-center py-16">
           <UserIcon size={48} className="mx-auto text-gray-400 mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No contribution requests yet</h3>
@@ -365,14 +381,6 @@ const ContributionRequestsPage: React.FC = () => {
               Back to Project
             </Button>
           </Link>
-        </div>
-      )}
-      
-      {/* Loading State */}
-      {requestsLoading && (
-        <div className="text-center py-16">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-gray-500">Loading contribution requests...</p>
         </div>
       )}
     </div>
