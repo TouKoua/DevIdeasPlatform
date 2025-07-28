@@ -597,26 +597,26 @@ const ProjectDetailPage: React.FC = () => {
           </div>
 
           {/* Contribution Requests Summary for Owner */}
-          {isOwner && contributionRequests.length > 0 && (
+          {isOwner && !requestsLoading && projectRequests.length > 0 && (
             <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 mb-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Contribution Requests</h3>
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Pending:</span>
                   <span className="font-medium text-orange-600">
-                    {contributionRequests.filter(r => r.status === 'pending').length}
+                    {projectRequests.filter(r => r.status === 'pending').length}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Accepted:</span>
                   <span className="font-medium text-green-600">
-                    {contributionRequests.filter(r => r.status === 'accepted').length}
+                    {projectRequests.filter(r => r.status === 'accepted').length}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Declined:</span>
                   <span className="font-medium text-red-600">
-                    {contributionRequests.filter(r => r.status === 'declined').length}
+                    {projectRequests.filter(r => r.status === 'declined').length}
                   </span>
                 </div>
               </div>
