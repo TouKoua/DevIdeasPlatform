@@ -280,7 +280,7 @@ const ProjectDetailPage: React.FC = () => {
                       size="lg"
                     >
                       <span className="flex items-center gap-1">
-                        {getStatusIcon(project.status)}
+                        {getStatusIcon(project.status)},
                         {getStatusLabel(project.status)}
                       </span>
                     </Badge>
