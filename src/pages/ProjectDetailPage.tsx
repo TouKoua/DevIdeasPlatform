@@ -279,7 +279,7 @@ const ProjectDetailPage: React.FC = () => {
                       variant={getStatusColor(project.status)}
                       size="lg"
                     >
-              {isOwner && acceptedRequests.length > 0 && (
+                      <span className="flex items-center gap-1">
                         {getStatusIcon(project.status)}
                         {getStatusLabel(project.status)}
                       </span>
@@ -519,6 +519,49 @@ const ProjectDetailPage: React.FC = () => {
                     <p className="text-sm text-green-800">
                       Your contribution request has been sent to {project.createdBy.name}. They will be notified and can respond to your request.
                     </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Team Members Section */}
+              {isOwner && acceptedRequests.length > 0 && (
+                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h3 className="text-lg font-medium text-gray-900 mb-3">Team Members</h3>
+                  <div className="space-y-3">
+                    {acceptedRequests.map((request) => (
+                      <div key={request.id} className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <img
+                            src={request.requester.avatar}
+                            alt={request.requester.name}
+                            className="w-8 h-8 rounded-full mr-3"
+                          />
+                          <div>
+                            <Link
+                              to={`/public-profile/${request.requester.id}`}
+                              className="font-medium text-gray-900 hover:text-indigo-600 transition-colors"
+                            >
+                              {request.requester.name}
+                            </Link>
+                            <p className="text-sm text-gray-500">
+                              Joined {new Date(request.acceptedAt || request.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          icon={<UserXIcon size={16} />}
+                          onClick={() => {
+                            setTeammateToRemove(request.requester);
+                            setShowRemoveTeammateModal(true);
+                          }}
+                          title="Remove from team"
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
