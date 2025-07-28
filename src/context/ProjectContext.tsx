@@ -25,8 +25,8 @@ interface ProjectContextType {
   getUserById: (id: string) => Promise<User | undefined>;
   getProjectsByUserId: (userId: string) => ProjectIdea[];
   createContributionRequest: (projectId: string, message?: string) => Promise<void>;
-  updateContributionRequestStatus: (requestId: string, status: 'accepted' | 'declined', responseMessage?: string) => Promise<void>;
-  getContributionRequestsForProject: (projectId: string) => ContributionRequest[];
+  updateContributionRequestStatus: (requestId: string, status: 'accepted' | 'declined' | 'removed', responseMessage?: string) => Promise<void>;
+  getContributionRequestsForProject: (projectId: string) => Promise<ContributionRequest[]>;
   getContributionRequestsByUser: (userId: string) => ContributionRequest[];
   fetchContributionRequestsForProject: (projectId: string) => Promise<void>;
   markNotificationAsRead: (id: string) => Promise<void>;
@@ -1034,17 +1034,21 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  const updateContributionRequestStatus = async (requestId: string, status: 'accepted' | 'declined', responseMessage?: string) => {
+  const updateContributionRequestStatus = async (requestId: string, status: 'accepted' | 'declined' | 'removed', responseMessage?: string) => {
     if (!currentUser) {
       throw new Error('Must be logged in to update contribution request status');
     }
 
     try {
+      // If status is 'removed', we actually set it to 'declined' in the database
+      // since the database schema doesn't support 'removed' status
+      const dbStatus = status === 'removed' ? 'declined' : status;
+      
       // Update the contribution request status in the database
       const { error: updateError } = await supabase
         .from('contribution_requests')
         .update({
-          status: status,
+          status: dbStatus,
           response_message: responseMessage || null,
           updated_at: new Date().toISOString()
         })
@@ -1079,14 +1083,19 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  const getContributionRequestsForProject = (projectId: string): ContributionRequest[] => {
+  const getContributionRequestsForProject = async (projectId: string): Promise<ContributionRequest[]> => {
     const requests = contributionRequests.get(projectId) || [];
-    return requests
-      .map(request => ({
+    
+    // Populate requester data asynchronously
+    const populatedRequests = await Promise.all(
+      requests.map(async (request) => ({
         ...request,
         project: getProjectById(request.projectId),
-        requester: getUserById(request.requesterId) || request.requester
+        requester: (await getUserById(request.requesterId)) || request.requester
       }))
+    );
+    
+    return populatedRequests
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   };
 

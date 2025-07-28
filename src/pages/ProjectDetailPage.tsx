@@ -523,10 +523,10 @@ const ProjectDetailPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Team Members Section */}
+              {/* Current Team Members */}
               {isOwner && acceptedRequests.length > 0 && (
                 <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <h3 className="text-lg font-medium text-gray-900 mb-3">Team Members</h3>
+                  <h3 className="text-lg font-medium text-gray-900 mb-3">Current Team Members</h3>
                   <div className="space-y-3">
                     {acceptedRequests.map((request) => (
                       <div key={request.id} className="flex items-center justify-between">
@@ -556,7 +556,7 @@ const ProjectDetailPage: React.FC = () => {
                             setTeammateToRemove(request.requester);
                             setShowRemoveTeammateModal(true);
                           }}
-                          title="Remove from team"
+                          className="text-red-600 hover:text-red-700 hover:border-red-300"
                         >
                           Remove
                         </Button>
