@@ -279,7 +279,7 @@ const ProjectDetailPage: React.FC = () => {
                       variant={getStatusColor(project.status)}
                       size="lg"
                     >
-                      <span className="flex items-center gap-1">
+              {isOwner && acceptedRequests.length > 0 && (
                         {getStatusIcon(project.status)}
                         {getStatusLabel(project.status)}
                       </span>
