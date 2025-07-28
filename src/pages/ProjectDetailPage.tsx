@@ -280,7 +280,7 @@ const ProjectDetailPage: React.FC = () => {
                       size="lg"
                     >
                       <span className="flex items-center gap-1">
-                        {getStatusIcon(project.status)},
+                        {getStatusIcon(project.status)}
                         {getStatusLabel(project.status)}
                       </span>
                     </Badge>
@@ -523,10 +523,10 @@ const ProjectDetailPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Team Members Section */}
+              {/* Current Team Members */}
               {isOwner && acceptedRequests.length > 0 && (
                 <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <h3 className="text-lg font-medium text-gray-900 mb-3">Team Members</h3>
+                  <h3 className="text-lg font-medium text-gray-900 mb-3">Current Team Members</h3>
                   <div className="space-y-3">
                     {acceptedRequests.map((request) => (
                       <div key={request.id} className="flex items-center justify-between">
@@ -544,7 +544,7 @@ const ProjectDetailPage: React.FC = () => {
                               {request.requester.name}
                             </Link>
                             <p className="text-sm text-gray-500">
-                              Joined {new Date(request.acceptedAt || request.createdAt).toLocaleDateString()}
+                              Joined {new Date(request.updatedAt).toLocaleDateString()}
                             </p>
                           </div>
                         </div>
@@ -556,7 +556,6 @@ const ProjectDetailPage: React.FC = () => {
                             setTeammateToRemove(request.requester);
                             setShowRemoveTeammateModal(true);
                           }}
-                          title="Remove from team"
                         >
                           Remove
                         </Button>
