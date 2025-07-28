@@ -80,6 +80,9 @@ const ProjectDetailPage: React.FC = () => {
   const [contributionMessage, setContributionMessage] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showRemoveTeammateModal, setShowRemoveTeammateModal] = useState(false);
+  const [teammateToRemove, setTeammateToRemove] = useState<any>(null);
+  const [isRemovingTeammate, setIsRemovingTeammate] = useState(false);
   const [similarProjects, setSimilarProjects] = useState<any[]>([]);
   
   const project = getProjectById(id || '');
@@ -198,6 +201,37 @@ const ProjectDetailPage: React.FC = () => {
   const handleCancelContributionRequest = () => {
     setShowContributionForm(false);
     setContributionMessage('');
+  };
+
+  const handleRemoveTeammate = async () => {
+    if (!currentUser || !isOwner || !teammateToRemove) return;
+
+    setIsRemovingTeammate(true);
+    
+    try {
+      // Find the contribution request for this teammate
+      const contributionRequest = contributionRequests.find(
+        req => req.requesterId === teammateToRemove.id && req.status === 'accepted'
+      );
+      
+      if (contributionRequest) {
+        // Update the contribution request status to 'removed'
+        // This assumes you have an updateContributionRequestStatus function in your context
+        // If not, you'll need to implement this function
+        // await updateContributionRequestStatus(contributionRequest.id, 'removed');
+        
+        // Refresh the contribution requests
+        await fetchContributionRequestsForProject(project.id);
+      }
+      
+      setShowRemoveTeammateModal(false);
+      setTeammateToRemove(null);
+    } catch (error) {
+      console.error('Error removing teammate:', error);
+      alert('Failed to remove teammate. Please try again.');
+    } finally {
+      setIsRemovingTeammate(false);
+    }
   };
 
   const handleDeleteProject = async () => {
