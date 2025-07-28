@@ -331,6 +331,21 @@ const ContributionRequestsPage: React.FC = () => {
                     <p className="text-sm text-gray-700">{request.responseMessage}</p>
                   </div>
                 )}
+
+                {/* Re-accept button for removed teammates */}
+                {request.status === 'removed' && (
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon={<CheckIcon size={16} />}
+                      onClick={() => handleRequestAction(request.id, 'accepted')}
+                      disabled={processingRequests.has(request.id)}
+                    >
+                      {processingRequests.has(request.id) ? 'Processing...' : 'Re-accept Teammate'}
+                    </Button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

@@ -613,6 +613,63 @@ const ProjectDetailPage: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Remove Teammate Confirmation Modal */}
+      <Modal
+        isOpen={showRemoveTeammateModal}
+        onClose={() => setShowRemoveTeammateModal(false)}
+        title="Remove Teammate"
+        size="md"
+        footer={
+          <div className="flex space-x-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowRemoveTeammateModal(false)}
+              disabled={isRemovingTeammate}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              icon={<UserXIcon size={18} />}
+              onClick={handleRemoveTeammate}
+              disabled={isRemovingTeammate}
+            >
+              {isRemovingTeammate ? 'Removing...' : 'Remove Teammate'}
+            </Button>
+          </div>
+        }
+      >
+        {teammateToRemove && (
+          <div className="flex items-start space-x-3">
+            <div className="flex-shrink-0">
+              <AlertTriangleIcon size={24} className="text-red-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Are you sure you want to remove this teammate?
+              </h3>
+              <div className="flex items-center mb-4">
+                <img
+                  src={teammateToRemove.avatar}
+                  alt={teammateToRemove.name}
+                  className="w-8 h-8 rounded-full mr-2"
+                />
+                <span className="font-medium text-gray-900">{teammateToRemove.name}</span>
+              </div>
+              <p className="text-sm text-gray-600 mb-4">
+                This will remove {teammateToRemove.name} from the project team. They will no longer be listed as a contributor, 
+                and the project's contributor count will be updated. You can re-add them later if needed.
+              </p>
+              <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
+                <p className="text-sm text-amber-800">
+                  <strong>Note:</strong> The teammate will receive a notification about this change.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
