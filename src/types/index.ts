@@ -54,7 +54,7 @@ export interface ContributionRequest {
   projectId: string;
   requesterId: string;
   message?: string;
-  status: 'pending' | 'accepted' | 'declined';
+  status: 'pending' | 'accepted' | 'declined' | 'removed';
   createdAt: Date;
   updatedAt: Date;
   responseMessage?: string;

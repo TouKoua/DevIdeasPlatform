@@ -6,7 +6,7 @@ import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import Textarea from '../components/ui/Textarea';
 import ProjectCard from '../components/ProjectCard';
-import { EyeIcon, BookmarkIcon, ClockIcon, CodeIcon, CpuIcon, ArrowLeftIcon, UserIcon, EditIcon, MailIcon, UsersIcon, MessageSquareIcon, SendIcon, TrashIcon, AlertTriangleIcon, CheckCircleIcon, PlayCircleIcon, UserCheckIcon } from 'lucide-react';
+import { EyeIcon, BookmarkIcon, ClockIcon, CodeIcon, CpuIcon, ArrowLeftIcon, UserIcon, EditIcon, MailIcon, UsersIcon, MessageSquareIcon, SendIcon, TrashIcon, AlertTriangleIcon, CheckCircleIcon, PlayCircleIcon, UserCheckIcon, UserXIcon } from 'lucide-react';
 
 const getDifficultyColor = (difficulty: string): string => {
   switch (difficulty) {
