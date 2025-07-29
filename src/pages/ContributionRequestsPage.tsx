@@ -454,8 +454,7 @@ const ContributionRequestsPage: React.FC = () => {
             Clear search
           </Button>
         </div>
-      ) : null
-      )}
+      ) : null}
     </div>
   );
 };
