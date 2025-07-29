@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useProjects } from '../context/ProjectContext';
 import Button from '../components/ui/Button';
+import Input from '../components/ui/Input';
 import Badge from '../components/ui/Badge';
 import Textarea from '../components/ui/Textarea';
 import { 
@@ -13,7 +14,8 @@ import {
   XIcon,
   ClockIcon,
   MailIcon,
-  ExternalLinkIcon
+  ExternalLinkIcon,
+  SearchIcon
 } from 'lucide-react';
 
 const ContributionRequestsPage: React.FC = () => {
@@ -31,6 +33,7 @@ const ContributionRequestsPage: React.FC = () => {
   const [processingRequests, setProcessingRequests] = useState<Set<string>>(new Set());
   const [projectRequests, setProjectRequests] = useState<any[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const project = getProjectById(id || '');
 
@@ -92,6 +95,18 @@ const ContributionRequestsPage: React.FC = () => {
   const pendingRequests = contributionRequests.filter(req => req.status === 'pending');
   const processedRequests = contributionRequests.filter(req => req.status !== 'pending');
 
+  // Filter requests based on search query
+  const filterRequestsBySearch = (requests: any[]) => {
+    if (!searchQuery.trim()) return requests;
+    
+    const lowercaseQuery = searchQuery.toLowerCase();
+    return requests.filter(request => 
+      request.requester?.name?.toLowerCase().includes(lowercaseQuery)
+    );
+  };
+
+  const filteredPendingRequests = filterRequestsBySearch(pendingRequests);
+  const filteredProcessedRequests = filterRequestsBySearch(processedRequests);
   const handleResponseMessageChange = (requestId: string, message: string) => {
     setResponseMessages(prev => ({
       ...prev,
@@ -207,14 +222,50 @@ const ContributionRequestsPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Search Bar */}
+      {contributionRequests.length > 0 && (
+        <div className="bg-white rounded-lg shadow-md border border-gray-200 p-4 mb-6">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <SearchIcon size={18} className="text-gray-400" />
+            </div>
+            <Input
+              id="searchRequests"
+              name="searchRequests"
+              placeholder="Search by contributor name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          {searchQuery && (
+            <div className="mt-2 text-sm text-gray-600">
+              Showing {filteredPendingRequests.length + filteredProcessedRequests.length} of {contributionRequests.length} requests
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="ml-2 text-indigo-600 hover:text-indigo-800 font-medium"
+                >
+                  Clear search
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
       {/* Pending Requests */}
-      {pendingRequests.length > 0 && (
+      {filteredPendingRequests.length > 0 && (
         <div className="mb-8">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Pending Requests ({pendingRequests.length})
+            Pending Requests ({filteredPendingRequests.length})
+            {searchQuery && pendingRequests.length !== filteredPendingRequests.length && (
+              <span className="text-gray-500 text-sm font-normal ml-2">
+                of {pendingRequests.length} total
+              </span>
+            )}
           </h2>
           <div className="space-y-4">
-            {pendingRequests.map((request) => (
+            {filteredPendingRequests.map((request) => (
               <div key={request.id} className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center">
@@ -295,13 +346,18 @@ const ContributionRequestsPage: React.FC = () => {
       )}
 
       {/* Processed Requests */}
-      {processedRequests.length > 0 && (
+      {filteredProcessedRequests.length > 0 && (
         <div>
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Processed Requests ({processedRequests.length})
+            Processed Requests ({filteredProcessedRequests.length})
+            {searchQuery && processedRequests.length !== filteredProcessedRequests.length && (
+              <span className="text-gray-500 text-sm font-normal ml-2">
+                of {processedRequests.length} total
+              </span>
+            )}
           </h2>
           <div className="space-y-4">
-            {processedRequests.map((request) => (
+            {filteredProcessedRequests.map((request) => (
               <div key={request.id} className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center">
@@ -369,7 +425,8 @@ const ContributionRequestsPage: React.FC = () => {
       )}
 
       {/* Empty State */}
-      {(pendingRequests.length === 0 && processedRequests.length === 0) && (
+      {contributionRequests.length === 0 ? (
+        // No requests at all
         <div className="text-center py-16">
           <UserIcon size={48} className="mx-auto text-gray-400 mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No contribution requests yet</h3>
@@ -382,6 +439,22 @@ const ContributionRequestsPage: React.FC = () => {
             </Button>
           </Link>
         </div>
+      ) : (filteredPendingRequests.length === 0 && filteredProcessedRequests.length === 0) ? (
+        // No requests match search
+        <div className="text-center py-16">
+          <SearchIcon size={48} className="mx-auto text-gray-400 mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No requests found</h3>
+          <p className="text-gray-500 mb-6">
+            No contribution requests match your search for "{searchQuery}".
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => setSearchQuery('')}
+          >
+            Clear search
+          </Button>
+        </div>
+      ) : null
       )}
     </div>
   );
