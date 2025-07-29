@@ -1040,15 +1040,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     try {
-      // If status is 'removed', we actually set it to 'declined' in the database
-      // since the database schema doesn't support 'removed' status
-      const dbStatus = status === 'removed' ? 'declined' : status;
-      
       // Update the contribution request status in the database
       const { error: updateError } = await supabase
         .from('contribution_requests')
         .update({
-          status: dbStatus,
+          status: status,
           response_message: responseMessage || null,
           updated_at: new Date().toISOString()
         })
