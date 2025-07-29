@@ -242,18 +242,20 @@ const ProjectDetailPage: React.FC = () => {
     
     try {
       // Find the contribution request for this teammate
-      const contributionRequest = contributionRequests.find(
+      const contributionRequest = projectRequests.find(
         req => req.requesterId === teammateToRemove.id && req.status === 'accepted'
       );
       
       if (contributionRequest) {
-        // Update the contribution request status to 'removed'
-        // This assumes you have an updateContributionRequestStatus function in your context
-        // If not, you'll need to implement this function
-        // await updateContributionRequestStatus(contributionRequest.id, 'removed');
+        // Update the contribution request status to 'removed' (which maps to 'declined' in DB)
+        await updateContributionRequestStatus(contributionRequest.id, 'removed');
         
         // Refresh the contribution requests
         await fetchContributionRequestsForProject(project.id);
+        
+        // Refresh the local project requests state
+        const updatedRequests = await getContributionRequestsForProject(project.id);
+        setProjectRequests(updatedRequests);
       }
       
       setShowRemoveTeammateModal(false);
