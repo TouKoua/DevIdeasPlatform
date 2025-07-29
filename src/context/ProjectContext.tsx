@@ -848,11 +848,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (error) {
         if (error.code === '23505') {
           // Duplicate key error - view already exists in database, this is expected
-          // Don't log as error and don't increment local count
+          // Don't log as error and don't increment local count - this is expected behavior
           return;
         } else {
-          // Other Supabase errors should be logged
-          console.error('Error tracking project view:', error);
+          // Other unexpected Supabase errors should be logged
+          console.error('Unexpected error tracking project view:', error);
           return;
         }
       }
@@ -867,8 +867,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       );
 
     } catch (error) {
-      // Log unexpected client-side errors
-      console.error('Error in incrementProjectViews:', error);
+      // Log unexpected client-side errors only if they're not duplicate key errors
+      console.error('Unexpected error in incrementProjectViews:', error);
     }
   };
 

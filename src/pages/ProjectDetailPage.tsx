@@ -72,7 +72,8 @@ const ProjectDetailPage: React.FC = () => {
     getContributionRequestsForProject,
     fetchContributionRequestsForProject,
     deleteProject,
-    contributionRequests
+    contributionRequests,
+    updateContributionRequestStatus
   } = useProjects();
   const navigate = useNavigate();
   const [isRequestingContribution, setIsRequestingContribution] = useState(false);
