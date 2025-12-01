@@ -3,24 +3,24 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useProjects } from '../context/ProjectContext';
 import Input from '../components/ui/Input';
 import Textarea from '../components/ui/Textarea';
+import ImageUpload from '../components/ui/ImageUpload';
 import Button from '../components/ui/Button';
-import { 
-  ArrowLeftIcon, 
-  SaveIcon, 
-  UserIcon, 
-  MapPinIcon, 
-  GlobeIcon, 
-  GithubIcon, 
+import {
+  ArrowLeftIcon,
+  SaveIcon,
+  UserIcon,
+  MapPinIcon,
+  GlobeIcon,
+  GithubIcon,
   TwitterIcon,
-  CameraIcon,
   AlertCircleIcon,
   CheckCircleIcon
 } from 'lucide-react';
 
 const SettingsPage: React.FC = () => {
-  const { currentUser, updateUserProfile } = useProjects();
+  const { currentUser, updateUserProfile, uploadProfilePicture } = useProjects();
   const navigate = useNavigate();
-  
+
   const [formData, setFormData] = useState({
     name: '',
     bio: '',
@@ -30,7 +30,7 @@ const SettingsPage: React.FC = () => {
     twitter: '',
     avatar: ''
   });
-  
+
   const [errors, setErrors] = useState({
     name: '',
     website: '',
@@ -39,6 +39,7 @@ const SettingsPage: React.FC = () => {
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
   const [saveError, setSaveError] = useState('');
 
@@ -163,11 +164,21 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const url = e.target.value;
-    setFormData({ ...formData, avatar: url });
+  const handleAvatarUpload = async (file: File) => {
+    setIsUploadingAvatar(true);
     setSaveMessage('');
     setSaveError('');
+
+    try {
+      const uploadedUrl = await uploadProfilePicture(file);
+      setFormData({ ...formData, avatar: uploadedUrl });
+      setSaveMessage('Profile picture updated successfully!');
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      setSaveError(error instanceof Error ? error.message : 'Failed to upload profile picture');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
   };
 
   return (
@@ -206,32 +217,13 @@ const SettingsPage: React.FC = () => {
             {/* Profile Picture Section */}
             <div className="border-b border-gray-200 pb-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Profile Picture</h3>
-              <div className="flex items-center space-x-6">
-                <div className="relative">
-                  <img
-                    src={formData.avatar || currentUser.avatar}
-                    alt="Profile"
-                    className="w-20 h-20 rounded-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black bg-opacity-40 rounded-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
-                    <CameraIcon size={20} className="text-white" />
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <Input
-                    id="avatar"
-                    name="avatar"
-                    type="url"
-                    label="Avatar URL"
-                    placeholder="https://example.com/your-photo.jpg"
-                    value={formData.avatar}
-                    onChange={handleAvatarChange}
-                    disabled={isLoading}
-                  />
-                  <p className="text-sm text-gray-500 mt-1">
-                    Enter a URL to your profile picture. We recommend using a square image for best results.
-                  </p>
-                </div>
+              <div className="flex justify-center">
+                <ImageUpload
+                  currentImageUrl={formData.avatar || currentUser.avatar}
+                  onImageSelected={handleAvatarUpload}
+                  isLoading={isUploadingAvatar}
+                  maxSizeMB={5}
+                />
               </div>
             </div>
 

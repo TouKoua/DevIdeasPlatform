@@ -18,6 +18,7 @@ interface ProjectContextType {
   updateProject: (id: string, updates: Partial<Pick<ProjectIdea, 'title' | 'description' | 'difficulty' | 'programmingLanguages' | 'programmingSkills' | 'estimatedTime' | 'maxContributors' | 'showContributorCount' | 'status' | 'showStatus'>>) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
   updateUserProfile: (updates: Partial<Pick<User, 'name' | 'bio' | 'location' | 'website' | 'github' | 'twitter' | 'avatar'>>) => Promise<void>;
+  uploadProfilePicture: (file: File) => Promise<string>;
   incrementProjectViews: (id: string) => Promise<void>;
   saveProject: (id: string) => void;
   searchProjects: (query: string, filters: any) => ProjectIdea[];
@@ -655,6 +656,65 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  const uploadProfilePicture = async (file: File): Promise<string> => {
+    if (!currentUser) {
+      throw new Error('Must be logged in to upload profile picture');
+    }
+
+    try {
+      // Generate unique filename with timestamp and user ID to prevent collisions
+      const timestamp = Date.now();
+      const fileExtension = file.name.split('.').pop() || 'jpg';
+      const fileName = `${currentUser.id}-${timestamp}.${fileExtension}`;
+      const filePath = `${currentUser.id}/${fileName}`;
+
+      // Upload to Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('profile-avatars')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (uploadError) {
+        console.error('Error uploading file:', uploadError);
+        throw new Error('Failed to upload image. Please try again.');
+      }
+
+      // Get the public URL
+      const { data: urlData } = supabase.storage
+        .from('profile-avatars')
+        .getPublicUrl(uploadData.path);
+
+      const publicUrl = urlData.publicUrl;
+
+      // Update the profile with the new avatar URL
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          avatar_url: publicUrl,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', currentUser.id);
+
+      if (updateError) {
+        console.error('Error updating profile avatar:', updateError);
+        throw new Error('Failed to save avatar. Please try again.');
+      }
+
+      // Update current user state
+      setCurrentUser(prev => prev ? {
+        ...prev,
+        avatar: publicUrl
+      } : null);
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Error in uploadProfilePicture:', error);
+      throw error;
+    }
+  };
+
   const addProject = async (projectData: Omit<ProjectIdea, 'id' | 'createdAt' | 'views' | 'createdBy'>): Promise<string> => {
     if (!currentUser) {
       throw new Error('Must be logged in to create a project');
@@ -1114,7 +1174,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   return (
     <ProjectContext.Provider 
-      value={{ 
+      value={{
         projects,
         users,
         notifications,
@@ -1124,7 +1184,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         updateProject,
         deleteProject,
         updateUserProfile,
-        incrementProjectViews, 
+        uploadProfilePicture,
+        incrementProjectViews,
         saveProject,
         searchProjects,
         getProjectById,
